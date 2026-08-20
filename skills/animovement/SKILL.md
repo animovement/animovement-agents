@@ -92,6 +92,22 @@ Full detail — metadata keys, units, connections, anievent — in `reference/an
 - **2D vs 3D** is handled by the presence of a `z` (or third `where`) column — most functions branch on it internally.
 - Plot methods dispatch on the object: `plot(aniframe)` → trajectory; check objects have their own `plot()` methods in anivis.
 
+## Writing documentation here
+
+If you are adding or editing roxygen documentation, follow the style guide in
+[CONTRIBUTING.md](https://github.com/animovement/.github/blob/main/CONTRIBUTING.md#writing-function-documentation).
+It is short, and the rules are not the usual ones — the house style is deliberately terse.
+
+Two habits worth naming, because they are the ones assistants fall into:
+
+- **Do not pad.** No "This function...", no restating the function name in prose, no closing
+  summary repeating the description, no comments in examples narrating what the next line does.
+  A one-sentence description is finished, not unfinished.
+- **Do not reach for `\dontrun{}`** to make an example safe. It hides the example from
+  `R CMD check`, so it rots unnoticed. If an example cannot run, that is usually a sign it needs
+  smaller inputs, not a wrapper — `aniframe::example_aniframe()` builds a valid frame of any shape
+  in one line.
+
 ## Verifying against source
 
 The API evolves — **do not rely on remembered signatures**. Every package publishes its
