@@ -58,7 +58,15 @@ Full detail — metadata keys, units, connections, anievent — in `reference/an
 
 ## Verifying against source
 
-The full source is checked out locally at `C:\Users\Admin\Projects\animovement\<package>\R\`.
-The API evolves — **do not rely on remembered signatures**. Before calling a function,
-confirm its arguments and defaults in that package's `R/` (and its `NAMESPACE` for the
-current export list). This keeps the skill correct as the stack changes.
+The API evolves — **do not rely on remembered signatures**. Every package publishes its
+documentation as markdown, generated from the source, so it cannot drift from the installed
+package:
+
+- `https://animovement.dev/<package>/llms.txt` — every exported function, grouped, with a
+  one-line description. Start here to find out whether a function exists and which package
+  owns it.
+- `https://animovement.dev/<package>/reference/<function>.md` — the full help page for one
+  function, including its exact signature and arguments.
+
+If the source is checked out locally, that package's `R/` and `NAMESPACE` are equally
+authoritative. Either way, confirm arguments and defaults before calling something.
