@@ -49,6 +49,27 @@ would diverge. Open the checklist when cutting a release.
   split and keeps evolving; a plausible-sounding name may belong to a different package or
   may never have existed. Check `llms.txt`, not recollection.
 
+## The development loop
+
+```r
+devtools::load_all()        # the branch, not the installed build
+devtools::test()            # testthat, edition 3
+devtools::run_examples()    # examples are run in check; run them here first
+goodpractice::gp()          # before anything substantial lands
+```
+
+- **`library(pkg)` loads the *installed* package**, which is usually the published release
+  rather than the branch you are working on. Use `load_all()`, or install the branch first.
+  Anything that renders package output — `README.qmd`, vignettes — needs it installed, not
+  merely loaded. Say which of the two you tested against when reporting a result.
+- **Tests are [testthat](https://testthat.r-lib.org) edition 3.** A contribution that comes
+  with tests gets merged faster; a bug fix without a regression test will be asked for one.
+- **[goodpractice](https://docs.ropensci.org/goodpractice/)** is expected before a
+  substantial change, and appears on the release checklist. CONTRIBUTING.md gives a way to
+  mute the checks that are noisy for this suite rather than running the full set every time.
+- Setup — repositories, `pak::pak()`, and the note that renv is optional — is in
+  [CONTRIBUTING.md](https://github.com/animovement/.github/blob/main/CONTRIBUTING.md#setting-up).
+
 ## Commit messages
 
 [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/):

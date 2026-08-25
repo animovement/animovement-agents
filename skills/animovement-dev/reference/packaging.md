@@ -104,10 +104,16 @@ That is why `DESCRIPTION` carries:
 Additional_repositories: https://animovement.r-universe.dev
 ```
 
-Without it, `R CMD check` cannot resolve the other `ani*` packages and reports them as
-unavailable dependencies. **Every package that depends on another `ani*` package needs this
-line** — `aniframe` is the exception, since it depends on none of them. `aniread` adds the
-Bioconductor r-universe alongside it for its own dependencies.
+**Every package that depends on another `ani*` package needs this line** — `aniframe` is the
+exception, since it depends on none of them. `aniread` adds the Bioconductor r-universe
+alongside it for its own dependencies.
+
+The field is not used in ordinary dependency resolution, which works from the installed
+library. R reads it in two places: `tools:::.check_Rd_xrefs`, part of a plain `R CMD check`,
+so that a `\link[]{}` to a package outside the mainstream repositories resolves instead of
+being reported as unavailable; and `tools:::.check_package_CRAN_incoming` under `--as-cran`.
+So a missing field shows up as check noise once a cross-package Rd link is added, rather
+than as an immediate failure — which is exactly why it tends to go unnoticed.
 
 Install instructions in READMEs therefore look like:
 
