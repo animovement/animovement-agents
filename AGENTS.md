@@ -25,7 +25,12 @@ them, never restate them.
 - Edit the skills under `skills/`: `animovement` (using the stack) and `animovement-dev`
   (working on the packages). Each is the only copy — the repository root is itself the
   plugin, so Claude Code and Open Plugins consumers both read that directory.
-- Keep the two separated by audience. A release or CI question must not need the user
+- **`skills/animovement-dev/reference/{contributing,ai-policy,release-checklist}.md` are
+  generated.** They are vendored from `animovement/.github` by its Sync agent docs workflow
+  and carry the commit they came from. Never edit them here — the change belongs in
+  `animovement/.github`, and the next sync would overwrite it anyway. `scripts/check.sh`
+  fails if a provenance header is missing.
+- Keep the two skills separated by audience. A release or CI question must not need the user
   skill loaded, and an analysis question must not pull in maintainer conventions; that
   split is the whole reason there are two.
 - Keep `reference/` a map, not a frozen copy of the API. It points at the generated docs so

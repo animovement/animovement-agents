@@ -22,16 +22,19 @@ Most of what governs a contribution is written down, and is maintained in
 **Read the relevant one rather than relying on this file** — this skill covers what
 those files do not, and points at them for everything else.
 
-| For | Read |
-|---|---|
-| Setup, pull requests, code + documentation style | [CONTRIBUTING.md](https://github.com/animovement/.github/blob/main/CONTRIBUTING.md) |
-| What is expected of AI-assisted contributions | [AI.md](https://github.com/animovement/.github/blob/main/AI.md) |
-| Cutting a release, step by step | [the Release checklist template](https://github.com/animovement/.github/blob/main/.github/ISSUE_TEMPLATE/release.md) |
-| Per-package API | `https://animovement.dev/<package>/llms.txt` |
-| Which package owns what | the **animovement** skill |
+| For | Read | Canonical source |
+|---|---|---|
+| Setup, pull requests, code + documentation style | `reference/contributing.md` | [CONTRIBUTING.md](https://github.com/animovement/.github/blob/main/CONTRIBUTING.md) |
+| What is expected of AI-assisted contributions | `reference/ai-policy.md` | [AI.md](https://github.com/animovement/.github/blob/main/AI.md) |
+| Cutting a release, step by step | `reference/release-checklist.md` | [the Release checklist template](https://github.com/animovement/.github/blob/main/.github/ISSUE_TEMPLATE/release.md) |
+| Per-package API | — | `https://animovement.dev/<package>/llms.txt` |
+| Which package owns what | — | the **animovement** skill |
 
-Deliberately **not** copied here: the release steps and the contributing rules. Two copies
-would diverge. Open the checklist when cutting a release.
+The three `reference/` files are **generated copies**, vendored so they can be read without
+fetching a URL. Each carries the commit it came from in a header comment. They are synced by
+a workflow in `animovement/.github` and must never be edited here — a change belongs in the
+source, which then flows back. If a detail is load-bearing, or the header looks old, check
+the canonical source.
 
 ## Invariants — cheap to get wrong, expensive to undo
 
@@ -103,8 +106,8 @@ package gets them wrong — are in `reference/packaging.md`:
 
 ## Releases
 
-Open a **Release checklist** issue from the template and work through it — it is the source
-of truth and is kept current. The thing worth knowing in advance is that the version appears
+Open a **Release checklist** issue from the template and work through it — `reference/release-checklist.md`
+is the same content, for reading rather than ticking off. The thing worth knowing in advance is that the version appears
 in five places that go stale independently: `DESCRIPTION`, `CITATION.cff`, `inst/CITATION`,
 the `NEWS.md` heading, and the rendered `README.md` (the version is embedded in the startup
 banner and the citation block, so it must be re-rendered). After the release, `DESCRIPTION`

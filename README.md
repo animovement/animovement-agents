@@ -65,9 +65,12 @@ skills/
       packages.md              # key exported functions per package
       aniframe-model.md        # the aniframe data contract in detail
   animovement-dev/             # working on the packages
-    SKILL.md                   # invariants, commit conventions, releases
+    SKILL.md                   # invariants, dev loop, commit conventions, releases
     reference/
       packaging.md             # licensing, README, CI, distribution
+      contributing.md          # ┐ generated from animovement/.github by its
+      ai-policy.md             # │ Sync agent docs workflow — never edit here
+      release-checklist.md     # ┘
 AGENTS.md                      # portable entry point for this repository
 scripts/check.sh               # validate the manifests and their agreement
 ```

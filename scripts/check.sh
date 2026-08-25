@@ -28,6 +28,19 @@ for dir in skills/*/; do
 done
 [ "$found" -gt 0 ] || note "no skills found under skills/"
 
+# The vendored copies of animovement/.github's documents are generated. A missing
+# provenance header means someone hand-wrote or hand-edited one, and the next sync
+# will silently overwrite it.
+for f in skills/animovement-dev/reference/contributing.md \
+         skills/animovement-dev/reference/ai-policy.md \
+         skills/animovement-dev/reference/release-checklist.md; do
+  if [ ! -f "$f" ]; then
+    note "$f is missing — run the Sync agent docs workflow in animovement/.github"
+  elif ! head -12 "$f" | grep -q '^  Commit: [0-9a-f]\{40\}$'; then
+    note "$f has no provenance header — it must be generated, not edited by hand"
+  fi
+done
+
 field() { python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get(sys.argv[2],""))' "$1" "$2"; }
 
 for key in name version description license; do
