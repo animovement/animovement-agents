@@ -3,11 +3,11 @@
   "owner": {
     "name": "animovement authors"
   },
-  "description": "Claude Code skills for working with the animovement R stack.",
+  "description": "Agent skills for working with the animovement R stack.",
   "plugins": [
     {
       "name": "animovement",
-      "source": "./plugins/animovement",
+      "source": "./",
       "description": "Codebase-understanding skill for the animovement R stack (aniframe, aniread, aniprocess, animetric, anivis, anicheck, anispace).",
       "license": "MIT",
       "keywords": ["animovement", "aniframe", "movement-tracking", "r", "skill"]

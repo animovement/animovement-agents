@@ -1,0 +1,9 @@
+{
+  "name": "animovement",
+  "version": "0.2.0",
+  "description": "Codebase-understanding skill for the animovement R stack: which package owns what, the aniframe data model, and naming conventions, so an agent can locate functions and verify their signatures instead of guessing.",
+  "homepage": "https://github.com/animovement/animovement-agents",
+  "repository": "https://github.com/animovement/animovement-agents",
+  "license": "MIT",
+  "keywords": ["animovement", "aniframe", "r", "skill", "movement-tracking"]
+}
