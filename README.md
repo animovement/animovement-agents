@@ -2,12 +2,19 @@
 
 Agent skills for working with the [animovement](https://github.com/animovement) R stack.
 
-The **animovement** skill gives a coding agent a durable map of the stack — which package
-owns what (`aniframe`, `aniread`, `aniprocess`, `animetric`, `anivis`, `anicheck`,
-`anispace`), the aniframe data model, and the naming conventions — so it can locate
-functions and **verify their signatures against the generated docs** rather than guessing.
-It loads only when a task actually involves animovement (progressive disclosure via the
-skill `description`), so it costs nothing on unrelated work.
+Two skills, for the two audiences:
+
+- **`animovement`** — for *using* the stack. A durable map of which package owns what
+  (`aniframe`, `aniread`, `aniprocess`, `animetric`, `anivis`, `anicheck`, `anispace`), the
+  aniframe data model, the naming traps, and the conventions — so an agent can locate
+  functions and **verify their signatures against the generated docs** rather than guessing.
+- **`animovement-dev`** — for working *on* the packages. Commit and pull request
+  conventions, releases and `NEWS.md`, and the packaging decisions recorded nowhere else:
+  why the metapackage is GPL-3 while the rest are MIT, the README setting that silently
+  breaks every badge, the reusable-workflow CI layout, and R-universe distribution.
+
+Each loads only when a task actually calls for it (progressive disclosure via the skill
+`description`), so they cost nothing on unrelated work.
 
 The skill is plain markdown and serves any assistant. It lives once, in
 [`skills/animovement/`](skills/animovement/); the manifests below are thin wrappers over
@@ -51,11 +58,21 @@ plugin.json                    # Open Plugins manifest (goose, agentskills.io)
 .claude-plugin/
   plugin.json                  # Claude Code plugin — the repository root is the plugin
   marketplace.json             # Claude Code marketplace, source "./"
-skills/animovement/
-  SKILL.md                     # package map, data model summary, conventions
-  reference/
-    packages.md                # key exported functions per package
-    aniframe-model.md          # the aniframe data contract in detail
+skills/
+  animovement/                 # using the stack
+    SKILL.md                   # package map, pipeline, naming traps, conventions
+    reference/
+      packages.md              # key exported functions per package
+      aniframe-model.md        # the aniframe data contract in detail
+  animovement-dev/             # working on the packages
+    SKILL.md                   # invariants, dev loop, commit conventions, releases
+    reference/
+      packaging.md             # licensing, README, CI, distribution
+      contributing.md          # ┐
+      ai-policy.md             # │ generated from animovement/.github by its
+      release-checklist.md     # │ Sync agent docs workflow — never edit here
+      pull-request-template.md # │
+      issue-templates.md       # ┘ (issue forms rendered as markdown)
 AGENTS.md                      # portable entry point for this repository
 scripts/check.sh               # validate the manifests and their agreement
 ```
