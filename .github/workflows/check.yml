@@ -1,0 +1,17 @@
+# The repository root is a plugin twice over: plugin.json for Open Plugins consumers and
+# .claude-plugin/plugin.json for Claude Code. Two manifests over one skill is the only
+# duplication this layout cannot avoid, so assert they stay in agreement.
+name: Check packaging
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/check.sh

@@ -1,8 +1,8 @@
 # animovement packages — key exports
 
 One-line purpose + the exports you'll reach for most. This is a map, not the full API —
-confirm signatures in `C:\Users\Admin\Projects\animovement\<pkg>\R\` (and `NAMESPACE`
-for the authoritative export list).
+confirm signatures against the generated docs at `https://animovement.dev/<pkg>/llms.txt`
+(or, if the source is checked out locally, that package's `R/` and `NAMESPACE`).
 
 ## aniframe — core data structures for movement data
 
