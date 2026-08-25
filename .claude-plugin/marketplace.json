@@ -3,7 +3,7 @@
   "owner": {
     "name": "animovement authors"
   },
-  "description": "Claude Code skills for working with the animovement R stack.",
+  "description": "Agent skills for working with the animovement R stack.",
   "plugins": [
     {
       "name": "animovement",
