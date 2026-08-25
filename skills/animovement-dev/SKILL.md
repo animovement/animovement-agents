@@ -27,10 +27,12 @@ those files do not, and points at them for everything else.
 | Setup, pull requests, code + documentation style | `reference/contributing.md` | [CONTRIBUTING.md](https://github.com/animovement/.github/blob/main/CONTRIBUTING.md) |
 | What is expected of AI-assisted contributions | `reference/ai-policy.md` | [AI.md](https://github.com/animovement/.github/blob/main/AI.md) |
 | Cutting a release, step by step | `reference/release-checklist.md` | [the Release checklist template](https://github.com/animovement/.github/blob/main/.github/ISSUE_TEMPLATE/release.md) |
+| Opening a pull request | `reference/pull-request-template.md` | [PULL_REQUEST_TEMPLATE.md](https://github.com/animovement/.github/blob/main/.github/PULL_REQUEST_TEMPLATE.md) |
+| Opening an issue | `reference/issue-templates.md` | [the issue forms](https://github.com/animovement/.github/tree/main/.github/ISSUE_TEMPLATE) |
 | Per-package API | — | `https://animovement.dev/<package>/llms.txt` |
 | Which package owns what | — | the **animovement** skill |
 
-The three `reference/` files are **generated copies**, vendored so they can be read without
+These `reference/` files are **generated copies**, vendored so they can be read without
 fetching a URL. Each carries the commit it came from in a header comment. They are synced by
 a workflow in `animovement/.github` and must never be edited here — a change belongs in the
 source, which then flows back. If a detail is load-bearing, or the header looks old, check
@@ -72,6 +74,22 @@ goodpractice::gp()          # before anything substantial lands
   mute the checks that are noisy for this suite rather than running the full set every time.
 - Setup — repositories, `pak::pak()`, and the note that renv is optional — is in
   [CONTRIBUTING.md](https://github.com/animovement/.github/blob/main/CONTRIBUTING.md#setting-up).
+
+## Opening issues and pull requests through the API
+
+**Templates are a web-UI feature.** An issue or pull request created with `gh` or through
+the API gets none of their structure — which is exactly how the first issue and several
+pull requests in this organisation came to ignore them. Nothing warns you; the body is
+simply whatever you passed.
+
+So reproduce the fields by hand:
+
+- **Pull requests** — `reference/pull-request-template.md` is the template verbatim. Fill in
+  its sections rather than replacing them with prose of your own; that applies specifically
+  to AI-assisted contributions, and the AI policy says so.
+- **Issues** — `reference/issue-templates.md` renders the bug and feature *forms* as markdown
+  skeletons, since their YAML cannot be passed as a body. It also gives the value for
+  `gh issue create --type Bug|Feature|Task`, which has to be set explicitly.
 
 ## Commit messages
 

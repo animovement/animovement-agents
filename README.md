@@ -68,9 +68,11 @@ skills/
     SKILL.md                   # invariants, dev loop, commit conventions, releases
     reference/
       packaging.md             # licensing, README, CI, distribution
-      contributing.md          # ┐ generated from animovement/.github by its
-      ai-policy.md             # │ Sync agent docs workflow — never edit here
-      release-checklist.md     # ┘
+      contributing.md          # ┐
+      ai-policy.md             # │ generated from animovement/.github by its
+      release-checklist.md     # │ Sync agent docs workflow — never edit here
+      pull-request-template.md # │
+      issue-templates.md       # ┘ (issue forms rendered as markdown)
 AGENTS.md                      # portable entry point for this repository
 scripts/check.sh               # validate the manifests and their agreement
 ```

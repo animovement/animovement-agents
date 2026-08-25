@@ -33,7 +33,9 @@ done
 # will silently overwrite it.
 for f in skills/animovement-dev/reference/contributing.md \
          skills/animovement-dev/reference/ai-policy.md \
-         skills/animovement-dev/reference/release-checklist.md; do
+         skills/animovement-dev/reference/release-checklist.md \
+         skills/animovement-dev/reference/pull-request-template.md \
+         skills/animovement-dev/reference/issue-templates.md; do
   if [ ! -f "$f" ]; then
     note "$f is missing — run the Sync agent docs workflow in animovement/.github"
   elif ! head -12 "$f" | grep -q '^  Commit: [0-9a-f]\{40\}$'; then
