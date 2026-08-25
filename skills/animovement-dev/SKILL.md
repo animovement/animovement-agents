@@ -91,6 +91,22 @@ So reproduce the fields by hand:
   skeletons, since their YAML cannot be passed as a body. It also gives the value for
   `gh issue create --type Bug|Feature|Task`, which has to be set explicitly.
 
+## Writing documentation
+
+Roxygen documentation has its own style section in `reference/contributing.md`
+([Documentation style](https://github.com/animovement/.github/blob/main/CONTRIBUTING.md#documentation-style)).
+It is short, and the rules are not the usual ones — the house style is deliberately terse. Read it
+before writing `@param`, `@return` or `@examples`; it covers namespacing `example_aniframe()` in
+examples, naming what changed in `@return`, and when `\dontrun{}` is and is not acceptable.
+
+One habit it does not cover, because it is an assistant failure mode rather than a style
+preference:
+
+- **Do not pad.** No "This function…", no restating the function name in prose, no closing
+  summary repeating the description, no comments in examples narrating what the next line does.
+  **A one-sentence description is finished, not unfinished** — the instinct to keep going is the
+  thing to resist.
+
 ## Commit messages
 
 [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/):
