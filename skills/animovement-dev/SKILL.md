@@ -1,0 +1,90 @@
+---
+name: animovement-dev
+description: >-
+  Use when contributing to or maintaining the animovement R packages themselves —
+  cutting a release, writing NEWS.md entries, commit messages and pull request
+  titles, setting up or debugging CI, adding a new package to the suite, or
+  questions about licensing, README/badge conventions and how the packages are
+  distributed. For *using* the packages to analyse movement data, use the
+  animovement skill instead.
+---
+
+# animovement-dev
+
+Conventions for working **on** the animovement packages, as opposed to with them.
+The suite is eight repositories under [animovement](https://github.com/animovement),
+sharing one set of workflows, one documentation theme, and one release process.
+
+## The canonical documents
+
+Most of what governs a contribution is written down, and is maintained in
+[animovement/.github](https://github.com/animovement/.github) rather than here.
+**Read the relevant one rather than relying on this file** — this skill covers what
+those files do not, and points at them for everything else.
+
+| For | Read |
+|---|---|
+| Setup, pull requests, code + documentation style | [CONTRIBUTING.md](https://github.com/animovement/.github/blob/main/CONTRIBUTING.md) |
+| What is expected of AI-assisted contributions | [AI.md](https://github.com/animovement/.github/blob/main/AI.md) |
+| Cutting a release, step by step | [the Release checklist template](https://github.com/animovement/.github/blob/main/.github/ISSUE_TEMPLATE/release.md) |
+| Per-package API | `https://animovement.dev/<package>/llms.txt` |
+| Which package owns what | the **animovement** skill |
+
+Deliberately **not** copied here: the release steps and the contributing rules. Two copies
+would diverge. Open the checklist when cutting a release.
+
+## Invariants — cheap to get wrong, expensive to undo
+
+- **Format with [air](https://posit-dev.github.io/air/), not styler.** Formatting is checked
+  on every pull request and blocks merging. `/style` as a pull request comment applies it.
+- **Never push to `main`.** It is protected. Open a pull request; checks must pass.
+- **The pull request title must be a Conventional Commit** — merges squash, so the title
+  becomes the commit on `main`. See *Commit messages* below.
+- **`NEWS.md` is written by hand, for users**, in the
+  [tidyverse style](https://style.tidyverse.org/news.html) — not generated from commits, and
+  not a commit log. Every user-facing change gets a bullet under `# (development version)`.
+- **`man/` is generated.** Edit the roxygen comments, never the `.Rd` files. `/document` as a
+  pull request comment regenerates them.
+- **Verify a function exists before referring to it.** This suite went through a package
+  split and keeps evolving; a plausible-sounding name may belong to a different package or
+  may never have existed. Check `llms.txt`, not recollection.
+
+## Commit messages
+
+[Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/):
+
+```
+<type>(<optional scope>): <description>
+```
+
+`feat` (minor bump) · `fix` (patch) · `docs` · `perf` · `refactor` · `test` · `build` ·
+`ci` · `chore` · `revert`. Scope is normally the package name. A breaking change takes a
+`!` before the colon plus a `BREAKING CHANGE:` footer, and forces a major bump.
+
+Imperative mood, lower case, no trailing full stop; describe the change rather than the
+file — `fix(aniprocess): keep metadata through filter_kalman()`, not `fix: update
+filter-kalman.R`. The full table with version effects is in
+[CONTRIBUTING.md](https://github.com/animovement/.github/blob/main/CONTRIBUTING.md#commit-messages).
+
+## Packaging, licensing, CI and distribution
+
+The things that are written down nowhere else — and that are hard to reverse if a new
+package gets them wrong — are in `reference/packaging.md`:
+
+- **Licensing** — why the metapackage is GPL-3 while the seven analysis packages are MIT,
+  and how adapted code is credited.
+- **README** — the shared skeleton, the badge set, and the Quarto setting that silently
+  breaks every badge without it.
+- **CI** — six reusable workflows in `animovement/.github`, called by trigger-only stubs.
+  A new package needs the stubs, not copies.
+- **Distribution** — R-universe rather than CRAN, why `Additional_repositories` exists, and
+  the R version that WASM builds are pinned to.
+
+## Releases
+
+Open a **Release checklist** issue from the template and work through it — it is the source
+of truth and is kept current. The thing worth knowing in advance is that the version appears
+in five places that go stale independently: `DESCRIPTION`, `CITATION.cff`, `inst/CITATION`,
+the `NEWS.md` heading, and the rendered `README.md` (the version is embedded in the startup
+banner and the citation block, so it must be re-rendered). After the release, `DESCRIPTION`
+goes to `<next>.9000` and `NEWS.md` opens a fresh `# (development version)`.

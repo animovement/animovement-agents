@@ -22,8 +22,12 @@ them, never restate them.
 
 ## Working in this repository
 
-- Edit the skill under `skills/animovement/`. It is the only copy — the repository root is
-  itself the plugin, so Claude Code and Open Plugins consumers both read that directory.
+- Edit the skills under `skills/`: `animovement` (using the stack) and `animovement-dev`
+  (working on the packages). Each is the only copy — the repository root is itself the
+  plugin, so Claude Code and Open Plugins consumers both read that directory.
+- Keep the two separated by audience. A release or CI question must not need the user
+  skill loaded, and an analysis question must not pull in maintainer conventions; that
+  split is the whole reason there are two.
 - Keep `reference/` a map, not a frozen copy of the API. It points at the generated docs so
   it cannot drift from the packages; do not paste signatures into it.
 - Bump `version` in **both** `plugin.json` and `.claude-plugin/plugin.json` on every

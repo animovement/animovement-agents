@@ -27,7 +27,10 @@ as_aniframe(
 )
 ```
 
-- With `NULL`, roles are auto-detected from the recognised names above.
+- With `NULL`, roles are auto-detected from the recognised names above. Afterwards the
+  assignment can be read and changed with `get_variables_what()` / `set_` / `add_` /
+  `remove_`, and the same four verbs for `variables_when`, `variables_where` and
+  `variables_event`.
 - If no `keypoint` column exists, one is added as `"centroid"` (single-point trackers).
 - The **coordinate system** is inferred from which `variables_where` are present
   (x/y → 2D Cartesian, +z → 3D, rho/phi → polar, …).

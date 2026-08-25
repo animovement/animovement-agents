@@ -8,9 +8,15 @@
     {
       "name": "animovement",
       "source": "./",
-      "description": "Codebase-understanding skill for the animovement R stack (aniframe, aniread, aniprocess, animetric, anivis, anicheck, anispace).",
+      "description": "Agent skills for the animovement R stack: a map of which package owns what and the aniframe data model for analysis work, plus the maintainer conventions \u2014 releases, licensing, CI and commit style \u2014 for work on the packages themselves.",
       "license": "MIT",
-      "keywords": ["animovement", "aniframe", "movement-tracking", "r", "skill"]
+      "keywords": [
+        "animovement",
+        "aniframe",
+        "movement-tracking",
+        "r",
+        "skill"
+      ]
     }
   ]
 }

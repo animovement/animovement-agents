@@ -1,0 +1,12 @@
+# Checks that pull request titles follow Conventional Commits. The workflow lives
+# in animovement/.github so it is maintained in one place; only the trigger is
+# declared here. See that repository's CONTRIBUTING.md for the types.
+name: pr-title
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+jobs:
+  pr-title:
+    uses: animovement/.github/.github/workflows/pr-title.yml@main
