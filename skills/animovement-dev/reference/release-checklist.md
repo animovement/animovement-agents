@@ -3,8 +3,8 @@
   Edit it there; the Sync agent docs workflow opens a pull request with the change.
 
   Source: https://github.com/animovement/.github/blob/main/.github/ISSUE_TEMPLATE/release.md
-  Commit: 37da74bf2231c0dceed8ce1af6988763c0065f82
-  Synced: 2026-08-25
+  Commit: a99cac168b9921f0229ebc4cb15a369c246220d3
+  Synced: 2026-08-26
 
   This copy can lag its source. If a detail matters, check the URL above.
 -->
@@ -26,7 +26,7 @@ Bump the version in **every** place that carries it:
 - [ ] `DESCRIPTION` — drop the `.9000` development suffix
 - [ ] `CITATION.cff` — `version` and `date-released`
 - [ ] `inst/CITATION` — `version`, if the package has one
-- [ ] `NEWS.md` — the `# (development version)` heading becomes `# <package> <version>`
+- [ ] `NEWS.md` — the `# <package> (development version)` heading becomes `# <package> <version> (YYYY-MM-DD)`
 - [ ] `README.md` — re-render it. The version is embedded in the startup banner and the citation block, so it goes stale silently:
 
   ```r
