@@ -6,7 +6,7 @@ tagging each column with a role. Everything in the stack consumes and returns an
 ## Column roles (metadata)
 
 Set at construction and stored in metadata; retrieved with
-`aniframe::get_metadata(data)` (e.g. `get_metadata(data, "variables_where")`).
+`anicore::get_metadata(data)` (e.g. `get_metadata(data, "variables_where")`).
 
 | Role | Metadata key | Recognised columns |
 |---|---|---|
