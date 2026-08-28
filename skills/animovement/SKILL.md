@@ -2,7 +2,7 @@
 name: animovement
 description: >-
   Use when reading, cleaning, analysing, or plotting animal movement / pose
-  tracking data with the animovement R stack (aniframe, aniread, aniprocess,
+  tracking data with the animovement R stack (anicore, aniread, aniprocess,
   animetric, anivis, anicheck, anispace). Explains which package owns what, the
   aniframe data model, and the naming conventions, so functions can be located
   and their signatures verified rather than guessed.
@@ -24,13 +24,13 @@ licensing, CI, commit conventions — use the **animovement-dev** skill instead.
 | Package | Owns | Verb prefixes |
 |---|---|---|
 | **animovement** | The metapackage. `library(animovement)` attaches the whole suite and resolves versions; it owns no analysis functions of its own | — |
-| **aniframe** | The core data structures (aniframe, anievent), metadata, units, connections, grouping | `as_` `is_` `get_` `set_` `add_` `remove_` `ensure_` |
+| **anicore** | The core data structures (aniframe, anievent), metadata, units, axes, connections, grouping | `as_` `is_` `get_` `set_` `add_` `remove_` `ensure_` |
 | **aniread** | Reading tracker output into an aniframe + writing it back | `read_` `write_` |
 | **aniprocess** | Signal processing: NA masking, gap filling, smoothing/filtering | `filter_` `replace_na_` `find_` |
 | **animetric** | Metrics: kinematics, tortuosity/sinuosity, nearest-neighbour, summaries | `calculate_` `compute_` `summarise_`/`summarize_` |
 | **anivis** | Plot methods, themes, palettes, colour scales | `plot_` `theme_` `scale_` `geom_` `palette_` |
 | **anicheck** | Data-quality diagnostics (return check objects; plotted via anivis) | `check_` |
-| **anispace** | Coordinate-system transforms, rotation, translation, egocentric, **and all angle helpers** | `map_to_` `transform_` `rotate_` `translate_` |
+| **anispace** | Coordinate-system transforms, rotation, translation, egocentric | `map_to_` `transform_` `rotate_` `translate_` |
 
 See `reference/packages.md` for the key exported functions per package.
 
@@ -59,32 +59,45 @@ one up rather than copying this as working code.
 - **`filter_*` means signal filtering, not row subsetting.** `filter_na_confidence()`
   masks bad points to NA and `filter_sgolay()` smooths; neither drops rows. `dplyr::filter()`
   also works on an aniframe and *does* subset rows. Read which one is meant.
-- **Angle helpers live in anispace, not animetric** — `wrap_angle()`, `unwrap_angle()`,
-  `diff_angle()`, `calculate_angular_difference()`. This one is easy to get backwards
-  because they are used most often alongside metrics.
+- **Angle helpers are split.** `wrap_angle()`, `unwrap_angle()`, `deg_to_rad()` and
+  `rad_to_deg()` are in **anicore**; `diff_angle()` and `calculate_angular_difference()` are
+  in **anispace**; `mean_angle()` and `median_angle()` are in **animetric**.
 - **`calculate_*` and `compute_*` both appear in animetric** and are not interchangeable;
   each function has one spelling (`calculate_nnd()` and `compute_nnd()` both exist, most
   others do not pair up).
 - **Both British and American spellings** are exported for much of the suite
   (`summarise`/`summarize`, `colour`/`color`) — but not universally, so check rather than assume.
-- **An aniframe stays grouped by identity.** Operations run within-track by design; if a
-  result looks per-individual when you expected it pooled, that is why.
+- **An aniframe stays grouped by identity and temporal context.** Operations run
+  within-track by design; if a result looks per-individual when you expected it pooled, that
+  is why. Regrouping warns, and operations that derive from successive rows (speed, path
+  length) refuse a grouping that pools several trajectories.
+- **The identity order is not a hierarchy.** `variables_what` is not ordered coarse to fine,
+  identity variables need not nest, and there is no "finest" level to infer. Where a function
+  collapses one, it asks which.
 
 ## The aniframe data model
 
 An **aniframe** is a `tibble` subclass carrying **metadata** that assigns each column a role:
 
-- **`variables_what`** — identity: recognised `model`, `individual`, `track`, `keypoint`.
-- **`variables_when`** — temporal: `time` (required) plus recognised `observation`, `session`, `trial`.
-- **`variables_where`** — spatial: `x`/`y`/`z` (Cartesian) or `rho`/`phi`/`theta` etc.; the coordinate system is inferred from which are present.
+- **`variables_index`** — the single column the frame is indexed by, `time` by default. Not
+  one of the `variables_when`, and never a grouping variable.
+- **`variables_what`** — identity: recognised `model`, `individual`, `subject`, `track`, `keypoint`. At least one, in any order.
+- **`variables_when`** — temporal *context*: recognised `observation`, `session`, `trial`.
+- **`variables_where`** — spatial, derived from `axes`, which maps each axis role (`x`, `y`,
+  `z`, `rho`, `phi`, `theta`) to the column carrying it. The role set is closed; the column
+  names are free, so coordinates may be called anything.
 - Plus an optional `confidence` column.
 
 Roles are set explicitly via `as_aniframe(variables_what=, variables_when=, variables_where=)`
 or auto-detected from the recognised names, and can be adjusted afterwards with the
-`get_`/`set_`/`add_`/`remove_variables_*()` accessors. An aniframe is **grouped by identity**
-(all `what` + non-time `when`) on construction, and the dplyr methods
+`get_`/`set_`/`add_`/`remove_variables_*()` accessors. An aniframe is **grouped by
+`variables_what` + `variables_when`** on construction, and the dplyr methods
 (`group_by`/`mutate`/`summarise`/`filter`) **preserve the aniframe class + metadata**.
-Full detail — metadata keys, units, connections, anievent — in `reference/aniframe-model.md`.
+
+Metadata also records **which way the axes point** — `axis_directions`, `axis_extents` and
+`handedness` — which is what tells a scene filmed from above from the same scene filmed
+through a glass floor. Full detail, including units, sampling, connections and anievent, in
+`reference/aniframe-model.md`.
 
 ## Conventions
 
