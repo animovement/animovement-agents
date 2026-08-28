@@ -12,7 +12,7 @@ style, releases — lives in
 | Package | License |
 |---|---|
 | `animovement` | GPL-3 |
-| `aniframe`, `aniread`, `aniprocess`, `animetric`, `anivis`, `anicheck`, `anispace` | MIT + file LICENSE |
+| `anicore`, `aniread`, `aniprocess`, `animetric`, `anivis`, `anicheck`, `anispace` | MIT + file LICENSE |
 
 The metapackage is GPL-3 because its package-management code — attaching the suite,
 resolving conflicts, the startup banner — is adapted from the
@@ -104,7 +104,7 @@ That is why `DESCRIPTION` carries:
 Additional_repositories: https://animovement.r-universe.dev
 ```
 
-**Every package that depends on another `ani*` package needs this line** — `aniframe` is the
+**Every package that depends on another `ani*` package needs this line** — `anicore` is the
 exception, since it depends on none of them. `aniread` adds the Bioconductor r-universe
 alongside it for its own dependencies.
 

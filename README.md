@@ -5,7 +5,7 @@ Agent skills for working with the [animovement](https://github.com/animovement) 
 Two skills, for the two audiences:
 
 - **`animovement`** — for *using* the stack. A durable map of which package owns what
-  (`aniframe`, `aniread`, `aniprocess`, `animetric`, `anivis`, `anicheck`, `anispace`), the
+  (`anicore`, `aniread`, `aniprocess`, `animetric`, `anivis`, `anicheck`, `anispace`), the
   aniframe data model, the naming traps, and the conventions — so an agent can locate
   functions and **verify their signatures against the generated docs** rather than guessing.
 - **`animovement-dev`** — for working *on* the packages. Commit and pull request
