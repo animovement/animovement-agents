@@ -13,26 +13,27 @@ no analysis functions; everything else on this page comes from one of the seven 
 
 ## anicore — core data structures for movement data
 
-The package is `anicore`; the **class** it defines is still `aniframe`.
+`aniframe` is the parent class; the frames are `anipoint`, `anisegment`, `anijoint` and `anievent`. `set_*` only declares; value-changing operations have their own verbs.
 
-- **Construct / coerce:** `aniframe()`, `as_aniframe()`, `example_aniframe()`, `is_aniframe()`, `ensure_is_aniframe()`, `validate_aniframe()`
-- **Column roles:** `get_variables_what()` / `set_` / `add_` / `remove_` — and the same four verbs for `variables_when`, `variables_where`, `variables_event`
-- **Index:** `get_index()` / `set_index()` — the single column the frame is indexed by, separate from `variables_when`
-- **Axis roles:** `get_axes()` / `set_axes()` — which column carries which axis role, so coordinates may be named anything; `get_coordinate_system()`
-- **Orientation:** `get_axis_directions()` / `set_axis_directions()`, `get_axis_extents()` / `set_axis_extents()`, `get_handedness()` / `set_handedness()`, `get_angle_direction()` / `set_angle_direction()`
-- **Metadata:** `get_metadata()`, `set_metadata()`, `list_default_metadata()`
-- **Units:** `get_/set_unit_space()`, `get_/set_unit_time()`, `get_/set_unit_angle()`
-- **Sampling:** `get_/set_sampling_rate()`, `get_sampling_interval()`, `is_sampling_regular()`
-- **Connections (skeleton):** `set_connections()`, `get_connections()`, `add_connections()`, `remove_connections()`
+- **Construct / coerce:** `anipoint()`, `as_anipoint()`, `example_anipoint()`, `validate_anipoint()`, `is_anipoint()`, `ensure_is_anipoint()`; `is_aniframe()` / `ensure_is_aniframe()` test for any frame (the old `aniframe()` constructors are soft-deprecated aliases)
+- **Column roles:** `get_variables()`, `set_variables()`, `add_variables()`, `remove_variables()` (role and slot arguments), `get_keys()` (the grouping set)
+- **Index:** `get_index()` / `set_index()`: the single column the frame is indexed by; never a key
+- **Axis roles:** `get_axes()` (which column carries which axis role, so coordinates may be named anything; declare with `set_variables(where = )`), `get_coordinate_system()`
+- **Orientation:** `get_axis_directions()` / `set_axis_directions()` (declares only), `reflect_axis()` (turns an axis over and reflects the data), `get_handedness()`, `get_angle_direction()`; orientation columns (`yaw`, quaternion) go in `where$orientation`
+- **Metadata:** `get_metadata()`, `set_metadata()`, `list_default_metadata()`; flat access over a tree of categories. Units, sampling rate, extents and handedness are declared here
+- **Unit conversion:** `convert_unit_space()`, `convert_unit_time()`, `convert_unit_angle()`
+- **Sampling:** `get_sampling_interval()`, `is_sampling_regular()` (the rate is `get_metadata(x, "sampling_rate")`)
+- **Structures:** `anistructure()`, `example_structure()`, `validate_anistructure()`, `is_anistructure()`, and `set_structure()` / `get_structure()` / `remove_structure()` (several named structures per frame)
+- **Segments and joints:** `as_anisegment()`, `as_anijoint()`, `is_anisegment()`, `is_anijoint()`, `angle_between()`; `as_anipoint(seg, root = )` rebuilds positions
 - **Coordinate-system predicates:** `is_cartesian[_1d/_2d/_3d]()`, `is_polar()`, `is_cylindrical()`, `is_spherical()`, `is_spatial()`, and an `ensure_is_*()` for each
 - **Events:** `anievent()`, `as_anievent()`, `to_anievent()`, `is_anievent()`, `ensure_is_anievent()`, `validate_anievent()`
-- **Angles:** `deg_to_rad()`, `rad_to_deg()`, `wrap_angle()`, `unwrap_angle()`; also `convert_nan_to_na()`
+- **Angles:** `deg_to_rad()`, `rad_to_deg()`, `wrap_angle()`, `unwrap_angle()`, `circ_*()`; also `convert_nan_to_na()`, `convert_inf_to_na()`
 
 ## aniread — reading & writing movement data
 
 - **Read (pose/tracking):** `read_sleap()`, `read_deeplabcut()`, `read_lightningpose()`, `read_anipose()`, `read_trex()`, `read_idtracker()`, `read_octron()`, `read_trackmate()`, `read_fasttrack()`, `read_movement()`, `read_bonsai()`, `read_animalta()`, `read_freemocap()`, `read_c3d()`
 - **Read (other):** `read_fictrac()`, `read_trackball()`, `read_boris()`, `read_custom()`, `read_dataset()`
-- **Round-trip:** `read_aniframe()` / `write_aniframe()`; also `write_intracktive()`
+- **Round-trip:** `read_aniframe()` / `write_aniframe()` (any frame class); also `write_intracktive()`
 - **Utilities:** `get_supported_sources()`, `detect_source()`, `get_sample_data()`, `calibrate_trackball()`
 
 ## aniprocess — signal processing & filtering
@@ -56,7 +57,7 @@ The package is `anicore`; the **class** it defines is still `aniframe`.
 
 ## anivis — visualisation & diagnostics
 
-- **Plots:** `plot_trajectory()`, `plot_timeseries()`, `plot_events()`, `as_plot_data()` — also the `plot()` methods for aniframes and anicheck objects
+- **Plots:** `plot_trajectory()`, `plot_timeseries()`, `plot_events()`, `as_plot_data()` — also the `plot()` methods for anipoints, anievents and anicheck objects
 - **Themes:** `theme_animovement[_light/_dark]()`, `theme_imputets()`
 - **Palettes + scales:** `palette_animovement()`, `palette_material()`, `palette_okabeito()`; the underlying vectors `material_colors()`, `okabeito_colors()`, `oi_colors()`; `scale_[colour|color|fill]_material[_c/_d]()`, `scale_*_okabeito()`, `scale_*_oi()`
 - **Event geoms:** `geom_event_point()`, `geom_event_state()`

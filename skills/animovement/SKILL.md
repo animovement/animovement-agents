@@ -24,8 +24,8 @@ licensing, CI, commit conventions — use the **animovement-dev** skill instead.
 | Package | Owns | Verb prefixes |
 |---|---|---|
 | **animovement** | The metapackage. `library(animovement)` attaches the whole suite and resolves versions; it owns no analysis functions of its own | — |
-| **anicore** | The core data structures (aniframe, anievent), metadata, units, axes, connections, grouping | `as_` `is_` `get_` `set_` `add_` `remove_` `ensure_` |
-| **aniread** | Reading tracker output into an aniframe + writing it back | `read_` `write_` |
+| **anicore** | The core data structures (anipoint, anisegment, anijoint, anievent), metadata, units, axes, structures, grouping | `as_` `is_` `get_` `set_` `add_` `remove_` `ensure_` |
+| **aniread** | Reading tracker output into an anipoint + writing it back | `read_` `write_` |
 | **aniprocess** | Signal processing: NA masking, gap filling, smoothing/filtering | `filter_` `replace_na_` `find_` |
 | **animetric** | Metrics: kinematics, tortuosity/sinuosity, nearest-neighbour, summaries | `calculate_` `compute_` `summarise_`/`summarize_` |
 | **anivis** | Plot methods, themes, palettes, colour scales | `plot_` `theme_` `scale_` `geom_` `palette_` |
@@ -39,7 +39,7 @@ See `reference/packages.md` for the key exported functions per package.
 ```r
 library(animovement)   # attaches the whole suite
 
-af <- read_sleap(path) |>          # aniread    — into an aniframe
+af <- read_sleap(path) |>          # aniread    — into an anipoint
   check_confidence() |>            # anicheck   — inspect before cleaning (returns a check object)
   filter_na_confidence() |>        # aniprocess — mask low-confidence points to NA
   replace_na_linear() |>           # aniprocess — fill the gaps
@@ -77,33 +77,36 @@ one up rather than copying this as working code.
 
 ## The aniframe data model
 
-An **aniframe** is a `tibble` subclass carrying **metadata** that assigns each column a role:
+**aniframe** is the parent class of the frames: **anipoint** (positions, what readers return),
+**anisegment** (length + direction per segment), **anijoint** (an angle per joint) and
+**anievent** (bouts). `is_aniframe()` is TRUE for all of them; test `is_anipoint()` when
+coordinates are needed. Each frame's metadata declares column roles as slots:
 
-- **`variables_index`** — the single column the frame is indexed by, `time` by default. Not
-  one of the `variables_when`, and never a grouping variable.
-- **`variables_what`** — identity: recognised `model`, `individual`, `subject`, `track`, `keypoint`. At least one, in any order.
-- **`variables_when`** — temporal *context*: recognised `observation`, `session`, `trial`.
-- **`variables_where`** — spatial, derived from `axes`, which maps each axis role (`x`, `y`,
-  `z`, `rho`, `phi`, `theta`) to the column carrying it. The role set is closed; the column
-  names are free, so coordinates may be called anything.
+- **`what$keys`**: identity, recognised `model`, `individual`, `subject`, `track`, `keypoint`. At least one, in any order.
+- **`when$index`**: the single column the frame is indexed by, `time` by default. Never a grouping variable.
+- **`when$keys`**: temporal *context*, recognised `observation`, `session`, `trial`.
+- **`where$position`**: maps each axis role (`x`, `y`, `z`, `rho`, `phi`, `theta`) to the
+  column carrying it. The role set is closed; the column names are free. Optional
+  `where$orientation` (`yaw`, or a quaternion).
 - Plus an optional `confidence` column.
 
-Roles are set explicitly via `as_aniframe(variables_what=, variables_when=, variables_where=)`
-or auto-detected from the recognised names, and can be adjusted afterwards with the
-`get_`/`set_`/`add_`/`remove_variables_*()` accessors. An aniframe is **grouped by
-`variables_what` + `variables_when`** on construction, and the dplyr methods
-(`group_by`/`mutate`/`summarise`/`filter`) **preserve the aniframe class + metadata**.
+Roles are detected from the recognised names, or set with
+`as_anipoint(variables_what=, variables_when=, variables_where=)`, and adjusted with
+`get_`/`set_`/`add_`/`remove_variables()`. A frame is **grouped by `get_keys()`**
+(`what$keys` + `when$keys`), and the dplyr methods **preserve the class + metadata**.
 
-Metadata also records **which way the axes point** — `axis_directions`, `axis_extents` and
-`handedness` — which is what tells a scene filmed from above from the same scene filmed
-through a glass floor. Full detail, including units, sampling, connections and anievent, in
-`reference/aniframe-model.md`.
+Metadata is read and declared through `get_metadata()` / `set_metadata()`, with flat field
+names; never read `attr(x, "metadata")`. **`set_*` only declares.** Changing values uses
+`convert_unit_*()` and `reflect_axis()`. Metadata also records **which way the axes point**
+(`axis_directions`, `axis_extents`, `handedness`), which is what tells a scene filmed from
+above from the same scene filmed through a glass floor. Named **structures** (skeletons,
+teams) relate the levels of a variable. Full detail in `reference/aniframe-model.md`.
 
 ## Conventions
 
 - **Verb-first names** (`read_*`, `filter_*`, `calculate_*`, `plot_*`, …); the verb tells you the package (table above), so function names are largely predictable.
 - **2D vs 3D** is handled by the presence of a `z` (or third `where`) column — most functions branch on it internally.
-- Plot methods dispatch on the object: `plot(aniframe)` → trajectory; check objects have their own `plot()` methods in anivis.
+- Plot methods dispatch on the object: `plot(anipoint)` → trajectory, `plot(anievent)` → events; check objects have their own `plot()` methods in anivis.
 
 ## Verifying against source
 
