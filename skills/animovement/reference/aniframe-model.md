@@ -1,117 +1,162 @@
 # The aniframe data model
 
-An **aniframe** is a `tibble` subclass (also a `grouped_df`) that carries **metadata**
-tagging each column with a role. Everything in the stack consumes and returns aniframes.
-The class is `aniframe`; the package that defines it is **anicore**.
+**aniframe** is the abstract parent class of every animovement frame. Each concrete class is
+a `tibble` subclass (usually a `grouped_df`) whose rows sit at one **grain**, and which
+carries **metadata** describing its columns. The package that defines them is **anicore**.
 
-## Column roles (metadata)
-
-Set at construction and stored in metadata; retrieved with
-`anicore::get_metadata(data)` (e.g. `get_metadata(data, "variables_where")`).
-
-| Role | Metadata key | Recognised columns | Accessor |
+| Class | One row per | Value columns | Made by |
 |---|---|---|---|
-| Index | `variables_index` | exactly one, `time` by default | `get_index()` / `set_index()` |
-| Identity | `variables_what` | `model`, `individual`, `subject`, `track`, `keypoint` | `get_variables_what()` / `set_` / `add_` / `remove_` |
-| Temporal context | `variables_when` | `observation`, `session`, `trial` | same four verbs |
-| Spatial | `variables_where` | derived from `axes` | `get_variables_where()`, or `get_axes()` for the roles |
+| `anipoint` | point × time | coordinates (`x`, `y`, `z`, or polar), optional orientation | `anipoint()`, `as_anipoint()`, readers |
+| `anisegment` | segment × time | `length`, unit direction `ux`, `uy` (`uz`) | `as_anisegment()` |
+| `anijoint` | joint × time | `angle` | `as_anijoint()` |
+| `anievent` | event (bout or instant) | `channel`, `type`, `label`, `start`, `stop` | `anievent()`, `as_anievent()`, `to_anievent()` |
 
-Plus an optional **`confidence`** column (tracker likelihood).
+Class vectors are `c("anipoint", "aniframe", ...)` and so on. `is_aniframe()` is TRUE for
+**any** of them, including an anievent. Code that needs coordinates must test the grain,
+`is_anipoint()` / `ensure_is_anipoint()`, not the family. When branching, test the specific
+class first.
 
-**The index is not one of the `variables_when`.** `variables_when` is the surrounding
-*context* — which session, which trial — and is what the frame is grouped by. The index
-positions each row within that context, so it is never a grouping variable. Detection finds
-`time` and assigns it as the index, not as temporal context.
+## Column roles: the `variables` category
 
-**Column names are free; roles are fixed.** A frame indexed by `frame_number` and carrying
-coordinates in `u`/`v` is a valid aniframe — the constructor requires *the column with that
-role*, not a column with a particular name.
+Roles are declared in metadata, as lists of named **slots**:
 
-### Axis roles
+| Role | Slots | Recognised columns |
+|---|---|---|
+| `what` (identity) | `keys` | `model`, `individual`, `subject`, `track`, `keypoint` |
+| `when` (time) | `index` (anipoint, anisegment, anijoint) or `interval` (anievent: `start`, `stop`), plus `keys` (context) | `time`; `observation`, `session`, `trial` |
+| `where` (space) | anipoint: `position`, optional `orientation`; anisegment: `length`, `direction`; anijoint: `angle` | `x`, `y`, `z`, `rho`, `phi`, `theta` |
+| `event` (anipoint only) | `state`, `point` | per-frame event columns, encoded by `to_anievent()` |
 
-`axes` maps axis role to column: `c(x = "u", y = "v")`. The **role set is closed** — `x`,
-`y`, `z`, `rho`, `phi`, `theta` — which is what keeps transformations between coordinate
-systems well defined, while the column names carrying them are free. `variables_where` names
-the same columns without their roles, and is derived from this. Read with `get_axes()`,
-change with `set_axes()`.
-
-## Construction & role assignment
+One family of accessors reads and declares them:
 
 ```r
-as_aniframe(
-  data,
-  variables_what  = NULL,   # NULL -> auto-detect from recognised names
-  variables_when  = NULL,
-  variables_where = NULL
-)
+get_variables(x)                       # the whole category
+get_variables(x, "when")               # a role's columns (index + keys)
+get_variables(x, "when", "keys")       # one slot
+get_keys(x)                            # the grouping set: what$keys + when$keys
+set_variables(x, when = list(keys = "trial"))    # replaces the named slots
+add_variables(x, what = "id")                     # a character vector = the main slot
+remove_variables(x, what = "keypoint")
+get_index(x); set_index(x, "frame")
+get_axes(x)                            # where$position, named by axis role
 ```
 
-- With `NULL`, roles are auto-detected from the recognised names above.
-- **`variables_what` is not a requirement to carry `individual` and `keypoint`.** The rule is
-  that a frame has at least one identity variable, whichever it happens to be. If none is
-  found, `keypoint = "centroid"` is injected for single-point trackers.
-- **The order of `variables_what` is not a hierarchy.** Identity variables need not nest, and
-  a position in the vector does not mean a level — the order is what detection emits, nothing
-  more. Do not infer a "finest" identity from it; ask the caller which level they mean.
-- The **coordinate system** is derived from which axis roles are present (x/y → 2D Cartesian,
-  +z → 3D, rho/phi → polar, …).
-- Required columns are validated; column order is standardised, rows ordered by
-  `variables_when` then the index.
+- **The index is not a key.** `when$keys` is the surrounding *context* (which session, which
+  trial) and is part of what the frame is grouped by. The index places each row within that
+  context, and is never a grouping variable.
+- **Column names are free; roles are fixed.** A frame indexed by `frame_number`, with
+  coordinates in `u`/`v`, is valid. `set_variables(x, where = c(x = "u", y = "v"))` says
+  which column carries which **axis role**. The role set (`x`, `y`, `z`, `rho`, `phi`,
+  `theta`) is closed, and the coordinate system is derived from which roles are present.
+- **Declaring restructures.** Columns are retyped, reordered and regrouped, so the metadata
+  and the frame cannot drift. A column must exist before it is declared. `set_metadata()`
+  refuses the `variables` category for this reason.
+- **The order of the `what` keys is not a hierarchy.** It is only the order detection emits.
+  Do not infer a "finest" identity from it; ask which level is meant.
+- **Orientation** goes in `where$orientation`: `c(yaw = "heading")` in 2D, or a unit
+  quaternion `c(qw = , qx = , qy = , qz = )` (Hamilton, scalar first) in 3D. Direction of
+  travel is not orientation; keep it as an ordinary derived column.
+
+## Construction
+
+```r
+as_anipoint(data, metadata = list(), variables_what = NULL, variables_when = NULL,
+            variables_where = NULL, index = NULL)
+```
+
+- With `NULL`, roles are detected from the recognised names. A frame needs at least one
+  identity variable; if none is found, `keypoint = "centroid"` is injected.
+- Rows are ordered by the keys, then the index.
 
 ## Grouping semantics
 
-The frame is grouped by **`variables_what` + `variables_when`** — identity and temporal
-context, not the index. This keeps each trajectory (per individual, per keypoint, per
-session, …) as its own group, so operations stay within-track.
+The frame is grouped by `get_keys()`: identity plus temporal context, never the index. Each
+trajectory is its own group, so operations stay within a track. The dplyr methods preserve
+the class and metadata. Regrouping is allowed but warns. Operations that derive a quantity
+from successive rows (speed, path length) need one trajectory per group.
 
-The dplyr methods for aniframe (`group_by`, `mutate`, `summarise`, `filter`, `arrange`)
-**preserve the aniframe class and metadata**, so you can pipe through standard dplyr without
-losing the structure. Regrouping is allowed but warns: the frame's grouping and its
-declaration then disagree. Some operations refuse it outright — anything deriving a quantity
-from successive rows (speed, path length) needs one trajectory per group, and pooling several
-would measure the distance *between* them as movement.
+## Metadata
 
-## Metadata beyond roles
+Stored as a tree of categories: `recording`, `time`, `space`, `variables`, `structure`, and
+`spec_version` (aniframe 3.0.0 / anievent 1.0.0). **Access is flat.**
 
-`set_metadata()` / `get_metadata()` also carry, among others:
+```r
+get_metadata(x, "sampling_rate")      # a field, wherever it lives
+get_metadata(x, "space")              # a whole category
+md <- get_metadata(x); md$sampling_rate <- 30; set_metadata(x, metadata = md)
+set_metadata(x, sampling_rate = 30, unit_space = "mm")
+```
 
-- **Units:** `unit_space`, `unit_time`, `unit_angle` (`set_unit_space()` / `set_unit_time()` /
-  `set_unit_angle()`; `set_unit_space(to_unit, calibration_factor)` rescales, factor `1` just
-  relabels).
-- **Sampling:** `sampling_rate` (`set_sampling_rate()`), `sampling_interval` measured from the
-  data (`get_sampling_interval()`), and `is_sampling_regular()`, computed on demand because
-  dropping rows changes the answer. Plus `start_datetime`.
-- **Orientation** — which way the axes point, and what follows from it:
-  - `axis_directions` — one of `"right"`, `"left"`, `"up"`, `"down"`, `"back"`, `"forward"`
-    per axis role, read from where the recording was made. `set_axis_directions()` *reflects*
-    an axis turned over, it does not merely relabel it.
-  - `axis_extents` — how far each axis runs, e.g. the video frame height for `y`. This is what
-    an axis is reflected around; an axis with no extent is negated instead.
-  - `handedness` and the derived `get_angle_direction()` follow from three declared axis
-    directions; `set_handedness()` states the convention without spelling the axes out.
+- **Never read `attr(x, "metadata")`.** The storage layout is anicore's to change, and the
+  shared CI refuses raw reads outside anicore. `names(get_metadata(x))` lists categories,
+  not fields.
+- **`set_*` only declares; it never changes a value.** Operations that change values have
+  their own verbs:
+  - **Units:** `unit_space`, `unit_time`, `unit_angle`. Declare with `set_metadata()`. To
+    rescale the data use `convert_unit_space()`, `convert_unit_time()` or
+    `convert_unit_angle()`. Converting from `px`, `frame` or `unknown` needs a
+    `calibration_factor`; converting from `frame` can use a declared `sampling_rate`
+    instead.
+  - **Sampling:** `sampling_rate` is declared. `get_sampling_interval()` measures the index,
+    and `is_sampling_regular()` is computed on demand. Also `start_datetime`.
+  - **Orientation of the axes:**
+    - `axis_directions` holds one of `right`/`left`/`up`/`down`/`back`/`forward` per role,
+      set with `set_axis_directions()`, which only declares.
+    - `axis_extents` holds how far each axis runs.
+    - `reflect_axis(x, "y")` *turns an axis over*: it reflects the column around its extent
+      (or negates it), flips the declared direction, and reflects any orientation columns.
+    - `get_handedness()` and `get_angle_direction()` are derived; declare handedness with
+      `set_metadata(x, handedness = "right")`.
+    - This is what tells a scene filmed from above from the same scene filmed through a
+      glass floor.
+  - **Reference frame:** `reference_frame`, one of `"allocentric"`, `"egocentric"` or
+    `"none"`.
+- An **anievent has no `space` category**; its spatial fields read `NULL`.
 
-  This is what distinguishes a scene filmed from above from the same scene filmed through a
-  glass floor: identical `x` and `y`, opposite rotations.
-- **Reference frame:** `reference_frame` — `"allocentric"`, `"egocentric"` or `"none"`.
-- **Connections** (the skeleton graph for pose data): `set_connections(data, connections, variable = "keypoint")`,
-  read back with `get_connections()`. Connections travel in metadata; note that when written
-  to parquet they are R-serialised, so non-R readers can't parse them (supply the skeleton
-  separately, e.g. a YAML, if a non-R tool needs it).
-- **`spec_version`** — semantic versions of the data contract, one per class.
+## Structures
 
-The spatial fields all have a way of saying "not applicable", because the metadata substrate
-is shared with `anievent()`, which has no spatial component: `unit_space`, `unit_angle` and
-`reference_frame` take `"none"`, `coordinate_system` takes `"unknown"`, and `axes`,
-`axis_directions` and `axis_extents` are empty.
+An `anistructure()` records how the levels of one variable relate. It has **points**,
+directed **segments** (`from` → `to`, optional expected `length`) and **joints** (pairs of
+segments, an optional `axis`, and per-DoF `min`/`max`/`rest` limits). Its `root` names a
+point. Limits and lengths are recorded, never enforced against the data.
 
-## anievent — the companion class
+A frame can hold several **named** structures, including several over the same variable:
 
-For discrete events (bouts, states) rather than continuous tracks, anicore provides
-**anievent** (`anievent()`, `as_anievent()`, `to_anievent()`), with its own validators and
-the `geom_event_*()` / `plot_events()` support in anivis. Event columns are declared through
-`variables_event`, a list of `state` (interval-valued) and `point` (instantaneous) columns.
+```r
+x |>
+  set_structure(example_structure()) |>                           # name defaults to "keypoint"
+  set_structure(anistructure(points = c("1", "2")), variable = "individual", name = "pair")
+get_structure(x, "keypoint")$segments
+remove_structure(x, "pair")
+```
+
+Whether structures grow into full body models (reference pose, rigid bodies, typed joints,
+markers) is undecided: animovement/anicore#164.
+
+## Converting between grains
+
+```r
+seg <- as_anisegment(af, structure = "keypoint")  # length + unit direction per segment
+jnt <- as_anijoint(seg)                           # one angle per joint (or as_anijoint(af))
+af2 <- as_anipoint(seg, root = af)                # rebuild positions from the root's trajectory
+angle_between(u, v, axis = NULL)                  # the vector maths behind joint angles
+```
+
+- **Joint angles** are 0 when the two segments are aligned. In 2D they are signed, turning
+  from `a` to `b`. In 3D they are the included angle, or signed about the joint's `axis`.
+- **Rebuilding positions** from segments is useful after editing them, e.g. holding lengths
+  constant: every point except the root moves to agree.
+- **A joint frame is not invertible.** Pose representation and inverse kinematics:
+  animovement/anicore#162.
+
+## anievent
+
+For discrete events (bouts, states) rather than continuous tracks. `to_anievent()` encodes
+an anipoint's declared `event` columns into bouts. Its `when` role has an `interval` slot
+(`start`, `stop`) instead of an index. The `geom_event_*()` and `plot_events()` support is
+in anivis.
 
 ## Persisting
 
-`aniread::write_aniframe()` / `read_aniframe()` round-trip an aniframe (parquet backend,
-via the arrow package) including its metadata.
+`aniread::write_aniframe()` / `read_aniframe()` round-trip a frame and its metadata through
+parquet (via arrow). Metadata is R-serialised, so non-R readers cannot parse it.
