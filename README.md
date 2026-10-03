@@ -11,14 +11,15 @@ Two skills, for the two audiences:
 - **`animovement-dev`** — for working *on* the packages. Commit and pull request
   conventions, releases and `NEWS.md`, and the packaging decisions recorded nowhere else:
   why the metapackage is GPL-3 while the rest are MIT, the README setting that silently
-  breaks every badge, the reusable-workflow CI layout, and R-universe distribution.
+  breaks every badge, the reusable-workflow CI layout, R-universe and conda distribution, and how
+  development versions move between packages.
 
 Each loads only when a task actually calls for it (progressive disclosure via the skill
 `description`), so they cost nothing on unrelated work.
 
-The skill is plain markdown and serves any assistant. It lives once, in
-[`skills/animovement/`](skills/animovement/); the manifests below are thin wrappers over
-that one directory, not copies of it.
+The skills are plain markdown and serve any assistant. They live once, in
+[`skills/`](skills/); the manifests below are thin wrappers over that directory, not copies
+of it.
 
 ## Install
 
@@ -44,11 +45,11 @@ Choose the `user` scope to make it available across all your projects. Update la
 
 ### Manual
 
-Copy the skill into whichever skills directory your agent reads — `~/.agents/skills/`,
+Copy the skills into whichever skills directory your agent reads — `~/.agents/skills/`,
 `~/.claude/skills/`, or a project-local `.agents/skills/`:
 
 ```sh
-cp -r skills/animovement ~/.agents/skills/animovement
+cp -r skills/animovement skills/animovement-dev ~/.agents/skills/
 ```
 
 ## What's inside
@@ -74,7 +75,7 @@ skills/
       pull-request-template.md # │
       issue-templates.md       # ┘ (issue forms rendered as markdown)
 AGENTS.md                      # portable entry point for this repository
-scripts/check.sh               # validate the manifests and their agreement
+scripts/check.sh               # validate the manifests, their agreement, and the version bump
 ```
 
 ## The three layers
@@ -87,8 +88,8 @@ Agent-facing material is not maintained twice. Each layer owns something the oth
 | **Human conventions** — contributing, releases, AI policy | [`animovement/.github`](https://github.com/animovement/.github) | Inherited organisation-wide |
 | **Ecosystem map and agent rules** | this repository | The only genuinely agent-specific content |
 
-The skill deliberately points agents at the generated docs to confirm signatures, so it
-stays correct as the API evolves — keep `reference/` a map, not a frozen copy of the API.
+The skills deliberately point agents at the generated docs to confirm signatures, so they
+stay correct as the API evolves — keep `reference/` a map, not a frozen copy of the API.
 
 Each of the eight package repositories also carries an `AGENTS.md` pointing back here. Those
 are generated from `agents/AGENTS.md.tmpl` in
@@ -97,10 +98,14 @@ AGENTS.md** workflow — not maintained in this repository.
 
 ## Contributing
 
-- Edit the skill under [`skills/animovement/`](skills/animovement/).
-- **Bump `version` in both `plugin.json` and `.claude-plugin/plugin.json`** on every
-  release — installs only pick up updates when it changes.
-- Validate before pushing: `./scripts/check.sh` (also run on every pull request).
+- Edit the skills under [`skills/`](skills/) — never the five generated files in
+  `skills/animovement-dev/reference/` (see [`AGENTS.md`](AGENTS.md)).
+- **Bump `version` in both `plugin.json` and `.claude-plugin/plugin.json`** whenever
+  anything under `skills/` changes — installs only pick up updates when it changes. The Sync
+  agent docs workflow in `animovement/.github` bumps the patch version for its own syncs; any
+  other change is bumped by hand.
+- Validate before pushing: `./scripts/check.sh` (also run on every pull request). It fails
+  when `skills/` differs from `origin/main` and the version does not.
 
 ## License
 

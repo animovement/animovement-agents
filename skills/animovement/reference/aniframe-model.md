@@ -6,9 +6,9 @@ carries **metadata** describing its columns. The package that defines them is **
 
 | Class | One row per | Value columns | Made by |
 |---|---|---|---|
-| `anipoint` | point × time | coordinates (`x`, `y`, `z`, or polar), optional orientation | `anipoint()`, `as_anipoint()`, readers |
+| `anipoint` | point × time | coordinates, by axis role (`x`, `y`, `z`, or `rho`, `phi`, `theta`), optional orientation | `anipoint()`, `as_anipoint()`, readers |
 | `anisegment` | segment × time | `length`, unit direction `ux`, `uy` (`uz`) | `as_anisegment()` |
-| `anijoint` | joint × time | `angle` | `as_anijoint()` |
+| `anijoint` | joint × time | `angle`, in the frame's `unit_angle` | `as_anijoint()` |
 | `anievent` | event (bout or instant) | `channel`, `type`, `label`, `start`, `stop` | `anievent()`, `as_anievent()`, `to_anievent()` |
 
 Class vectors are `c("anipoint", "aniframe", ...)` and so on. `is_aniframe()` is TRUE for
@@ -24,7 +24,7 @@ Roles are declared in metadata, as lists of named **slots**:
 |---|---|---|
 | `what` (identity) | `keys` | `model`, `individual`, `subject`, `track`, `keypoint` |
 | `when` (time) | `index` (anipoint, anisegment, anijoint) or `interval` (anievent: `start`, `stop`), plus `keys` (context) | `time`; `observation`, `session`, `trial` |
-| `where` (space) | anipoint: `position`, optional `orientation`; anisegment: `length`, `direction`; anijoint: `angle` | `x`, `y`, `z`, `rho`, `phi`, `theta` |
+| `where` (space) | anipoint: `position`, optional `orientation`; anisegment: `length`, `direction`; anijoint: `angle` | `x`, `y`, `z`, `rho`, `phi`, `theta`; orientation roles `yaw` or `qw`, `qx`, `qy`, `qz` are declared, never detected |
 | `event` (anipoint only) | `state`, `point` | per-frame event columns, encoded by `to_anievent()` |
 
 One family of accessors reads and declares them:
@@ -53,18 +53,25 @@ get_axes(x)                            # where$position, named by axis role
   refuses the `variables` category for this reason.
 - **The order of the `what` keys is not a hierarchy.** It is only the order detection emits.
   Do not infer a "finest" identity from it; ask which level is meant.
-- **Orientation** goes in `where$orientation`: `c(yaw = "heading")` in 2D, or a unit
-  quaternion `c(qw = , qx = , qy = , qz = )` (Hamilton, scalar first) in 3D. Direction of
-  travel is not orientation; keep it as an ordinary derived column.
+- **Orientation** — which way an entity faces — goes in `where$orientation`:
+  `set_variables(x, where = list(orientation = c(yaw = "col")))` in 2D, or a unit-norm
+  quaternion `c(qw = , qx = , qy = , qz = )` (Hamilton, scalar first) in 3D. Read it back with
+  `get_variables(x, "where", "orientation")`. `reflect_axis()` and `convert_unit_angle()` carry
+  it along; `euler_sequence` and `euler_intrinsic` record the Euler convention a source used.
+  `aniread::read_fictrac()` and `read_trex()` declare a `yaw`. An axial angle with no front
+  (Bonsai's and Octron's blob orientation) is deliberately left undeclared:
+  animovement/anicore#165.
+- **Direction of travel is not orientation.** It is derived from the path — animetric's
+  `course` — and stays an ordinary column. animetric keeps the name `heading` for where the
+  body faces.
 
 ## Construction
 
-```r
-as_anipoint(data, metadata = list(), variables_what = NULL, variables_when = NULL,
-            variables_where = NULL, index = NULL)
-```
+`as_anipoint()` takes the data plus optional `metadata`, `variables_what`,
+`variables_when`, `variables_where` and `index`; given an anisegment, `root` rebuilds
+positions (see *Converting between grains*). Check the reference page for defaults.
 
-- With `NULL`, roles are detected from the recognised names. A frame needs at least one
+- Left unset, roles are detected from the recognised names. A frame needs at least one
   identity variable; if none is found, `keypoint = "centroid"` is injected.
 - Rows are ordered by the keys, then the index.
 
@@ -78,7 +85,8 @@ from successive rows (speed, path length) need one trajectory per group.
 ## Metadata
 
 Stored as a tree of categories: `recording`, `time`, `space`, `variables`, `structure`, and
-`spec_version` (aniframe 3.0.0 / anievent 1.0.0). **Access is flat.**
+`spec_version` (aniframe 3.0.0 / anievent 1.0.0). **Access is flat.** `list_default_metadata()`
+shows every field.
 
 ```r
 get_metadata(x, "sampling_rate")      # a field, wherever it lives
@@ -111,14 +119,23 @@ set_metadata(x, sampling_rate = 30, unit_space = "mm")
       glass floor.
   - **Reference frame:** `reference_frame`, one of `"allocentric"`, `"egocentric"` or
     `"none"`.
+  - **Recording:** `source`, `source_version` (only a version the file states),
+    `source_format` (the export layout a reader parsed) and `filename`, filled in by the
+    readers.
+- **Angles a function derives** come back in `unit_angle`. A function that computes angles
+  reads a frame's with `angle_to_rad()` and writes results with `angle_from_rad()`;
+  `convert_unit_angle()` is the frame-level operation, which rescales the columns and the
+  declared unit together.
 - An **anievent has no `space` category**; its spatial fields read `NULL`.
 
 ## Structures
 
 An `anistructure()` records how the levels of one variable relate. It has **points**,
-directed **segments** (`from` → `to`, optional expected `length`) and **joints** (pairs of
-segments, an optional `axis`, and per-DoF `min`/`max`/`rest` limits). Its `root` names a
-point. Limits and lengths are recorded, never enforced against the data.
+directed **segments** (`from` → `to`, optional expected `length`) and **joints** — one
+measured angle each, between an ordered pair of segments `a` and `b`, with an optional `axis`
+and optional `min`/`max`/`rest` limits in radians. Several angles on one pair (flexion,
+abduction) are several joints about different axes. Its `root` names a point. Limits and
+lengths are recorded, never enforced against the data.
 
 A frame can hold several **named** structures, including several over the same variable:
 
@@ -130,8 +147,12 @@ get_structure(x, "keypoint")$segments
 remove_structure(x, "pair")
 ```
 
-Whether structures grow into full body models (reference pose, rigid bodies, typed joints,
-markers) is undecided: animovement/anicore#164.
+An anistructure is deliberately **a graph with optional constraints**, serving formations
+and networks as much as skeletons (decided in animovement/anicore#164). Per-individual values
+such as segment lengths are data, not structure. A full body model — reference pose, body
+frames, typed joints, markers — is deferred to animovement/anicore#162.
+
+Skeletons come from `aniread::read_structure()`; the frame readers never attach one.
 
 ## Converting between grains
 
@@ -139,9 +160,11 @@ markers) is undecided: animovement/anicore#164.
 seg <- as_anisegment(af, structure = "keypoint")  # length + unit direction per segment
 jnt <- as_anijoint(seg)                           # one angle per joint (or as_anijoint(af))
 af2 <- as_anipoint(seg, root = af)                # rebuild positions from the root's trajectory
-angle_between(u, v, axis = NULL)                  # the vector maths behind joint angles
+angle_between(u, v)                               # the vector maths behind joint angles
 ```
 
+- **Units differ.** `as_anijoint()` returns angles in the frame's `unit_angle`;
+  `angle_between()` is a primitive on bare vectors and returns radians.
 - **Joint angles** are 0 when the two segments are aligned. In 2D they are signed, turning
   from `a` to `b`. In 3D they are the included angle, or signed about the joint's `axis`.
 - **Rebuilding positions** from segments is useful after editing them, e.g. holding lengths
@@ -158,5 +181,7 @@ in anivis.
 
 ## Persisting
 
-`aniread::write_aniframe()` / `read_aniframe()` round-trip a frame and its metadata through
-parquet (via arrow). Metadata is R-serialised, so non-R readers cannot parse it.
+`aniread::write_aniframe()` writes parquet (via arrow), CSV or TSV; only parquet keeps the
+metadata, and the others warn. `read_aniframe()` reads parquet only, and restores an anipoint
+or an anievent — not an anisegment or anijoint. Metadata is R-serialised, so non-R readers
+cannot parse it.

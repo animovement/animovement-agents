@@ -41,15 +41,20 @@ the canonical source.
 ## Invariants — cheap to get wrong, expensive to undo
 
 - **Format with [air](https://posit-dev.github.io/air/), not styler.** Formatting is checked
-  on every pull request and blocks merging. `/style` as a pull request comment applies it.
+  on every pull request and blocks merging. `/style` as a pull request comment applies it —
+  but the comment commands only run for organisation members and owners, so an outside
+  contributor runs `air format .` themselves.
 - **Never push to `main`.** It is protected. Open a pull request; checks must pass.
-- **The pull request title must be a Conventional Commit** — merges squash, so the title
-  becomes the commit on `main`. See *Commit messages* below.
+- **The pull request title must be a Conventional Commit** — merges squash by convention, so
+  the title becomes the commit on `main`. See *Commit messages* below. The package
+  repositories do not run the `pr-title` check (see `reference/packaging.md`), so no workflow
+  checks the title there; get it right before merging.
 - **`NEWS.md` is written by hand, for users**, in the
   [tidyverse style](https://style.tidyverse.org/news.html) — not generated from commits, and
-  not a commit log. Every user-facing change gets a bullet under `# (development version)`.
+  not a commit log. Every user-facing change gets a bullet under
+  `# <package> (development version)` — e.g. `# anicore (development version)`.
 - **`man/` is generated.** Edit the roxygen comments, never the `.Rd` files. `/document` as a
-  pull request comment regenerates them.
+  pull request comment regenerates them (members and owners only, like `/style`).
 - **Verify a function exists before referring to it.** This suite went through a package
   split and keeps evolving; a plausible-sounding name may belong to a different package or
   may never have existed. Check `llms.txt`, not recollection.
@@ -133,10 +138,11 @@ package gets them wrong — are in `reference/packaging.md`:
   and how adapted code is credited.
 - **README** — the shared skeleton, the badge set, and the Quarto setting that silently
   breaks every badge without it.
-- **CI** — six reusable workflows in `animovement/.github`, called by trigger-only stubs.
-  A new package needs the stubs, not copies.
-- **Distribution** — R-universe rather than CRAN, why `Additional_repositories` exists, and
-  the R version that WASM builds are pinned to.
+- **CI** — seven reusable workflows in `animovement/.github`, six of them called by
+  trigger-only stubs in each package; the required checks; the metadata-contract job; Codecov.
+- **Distribution** — R-universe rather than CRAN, why `Additional_repositories` exists, the
+  conda builds on prefix.dev, and the R version that WASM builds are pinned to.
+- **Adding a package** — the checklist of places a new package has to be registered.
 
 ## Releases
 
@@ -145,4 +151,40 @@ is the same content, for reading rather than ticking off. The thing worth knowin
 in five places that go stale independently: `DESCRIPTION`, `CITATION.cff`, `inst/CITATION`,
 the `NEWS.md` heading, and the rendered `README.md` (the version is embedded in the startup
 banner and the citation block, so it must be re-rendered). After the release, `DESCRIPTION`
-goes to `<next>.9000` and `NEWS.md` opens a fresh `# (development version)`.
+goes to `<next>.9000` and `NEWS.md` opens a fresh `# <package> (development version)`.
+
+## Development versions across packages
+
+The packages depend on each other's **development** versions, installed from R-universe, so
+code another package needs is usable only once it is there under a new version number.
+
+- **anicore bumps in the feature pull request** when downstream will require the new code:
+  animovement/anicore#163 took it to `0.8.0.9003`, #171 to `0.8.0.9004`.
+- **The other packages bump in a pull request of their own**, touching only `DESCRIPTION`:
+  `chore(<pkg>): bump development version to <x>` (animovement/animetric#75,
+  animovement/anispace#46). The conda builds depend on it too: the animovement-forge
+  nightly publishes a package only when R-universe shows a new version (see
+  `reference/packaging.md`), so commits merged without a bump do not reach prefix.dev until
+  the next one.
+- **Downstream raises its dependency floor** in the pull request that starts using the new
+  code — `anicore (>= 0.8.0.9004)` in `Imports`.
+- **Then wait for R-universe.** CI installs `ani*` dependencies from
+  `animovement.r-universe.dev`, so a downstream check fails to resolve the new floor until
+  R-universe has rebuilt the upstream package (about ten minutes after the merge, as
+  observed). Re-run the checks once
+  `https://animovement.r-universe.dev/api/packages/<pkg>` reports the version.
+
+## Stacked pull requests
+
+A large change can land as a stack, each pull request based on the branch of the one below
+(the anicore restructure was animovement/anicore#156–#163). Each layer lands on `main` as its
+own squash commit.
+
+- **Squashing rewrites the lower layer.** Its commits reach `main` as one new commit, while
+  the upper branch still carries the originals. Replay only the upper layer's own commits:
+  `git rebase --onto origin/main <lower-branch> <upper-branch>`, then force-push.
+- **Retarget the upper pull request to `main`** if it still points at the merged branch.
+  GitHub retargets dependent pull requests only when the merged branch is deleted, and these
+  repositories do not delete branches on merge.
+- Every required check runs on a stacked pull request: those stubs trigger on all pull
+  requests, whatever their base.

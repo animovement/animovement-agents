@@ -21,59 +21,112 @@ licensing, CI, commit conventions — use the **animovement-dev** skill instead.
 
 ## The packages (where things live)
 
+Eight packages. `anipoint`, `anisegment`, `anijoint`, `anievent` and `anistructure` are
+**classes defined in anicore**, not packages.
+
 | Package | Owns | Verb prefixes |
 |---|---|---|
-| **animovement** | The metapackage. `library(animovement)` attaches the whole suite and resolves versions; it owns no analysis functions of its own | — |
-| **anicore** | The core data structures (anipoint, anisegment, anijoint, anievent), metadata, units, axes, structures, grouping | `as_` `is_` `get_` `set_` `add_` `remove_` `ensure_` |
-| **aniread** | Reading tracker output into an anipoint + writing it back | `read_` `write_` |
-| **aniprocess** | Signal processing: NA masking, gap filling, smoothing/filtering | `filter_` `replace_na_` `find_` |
-| **animetric** | Metrics: kinematics, tortuosity/sinuosity, nearest-neighbour, summaries | `calculate_` `compute_` `summarise_`/`summarize_` |
-| **anivis** | Plot methods, themes, palettes, colour scales | `plot_` `theme_` `scale_` `geom_` `palette_` |
-| **anicheck** | Data-quality diagnostics (return check objects; plotted via anivis) | `check_` |
-| **anispace** | Coordinate-system transforms, rotation, translation, egocentric | `map_to_` `transform_` `rotate_` `translate_` |
+| **animovement** | The metapackage. `library(animovement)` attaches the seven below and resolves versions; it owns no analysis functions | `animovement_` (install, update, conflicts, sitrep) |
+| **anicore** | The frame classes, metadata, units, axes, orientation, structures, grouping, and **every angle utility** | `as_` `is_` `ensure_` `get_` `set_` `add_` `remove_` `convert_` `reflect_` `validate_` `example_` `list_` `to_` `circ_` `angle_`, constructors `anipoint()` `anievent()` `anistructure()` |
+| **aniread** | Reading tracker output into an anipoint (BORIS into an anievent), skeletons into an anistructure, writing frames back | `read_` `write_` `detect_` `get_` `calibrate_` `validate_` |
+| **aniprocess** | Signal processing: NA masking, gap filling, smoothing/filtering, peaks | `filter_` `filter_na_` `replace_na_` `find_` |
+| **animetric** | Metrics: kinematics, tortuosity, nearest-neighbour, centroids, summaries | `calculate_` `compute_` `summarise_`/`summarize_`, plus `add_centroid()` `differentiate()` `is_aniframe_kin()` |
+| **anivis** | Plot methods, themes, palettes, colour scales, figure layout | `plot_` `theme_` `scale_` `geom_` `palette_`, plus `as_plot_data()` `*_colors()` `plots()` |
+| **anicheck** | Data-quality diagnostics on an anipoint (return check objects) | `check_` |
+| **anispace** | Coordinate-system maps, rigid transforms, egocentric frames, quaternions | `map_to_` `transform_` `rotate_` `translate_` `quat_` `cartesian_to_` `polar_to_` `spherical_to_` |
+
+**A prefix narrows the search; it does not settle it.** `add_`, `get_`, `is_`, `as_` and
+`validate_` each occur in more than one package — `add_variables()` (anicore) and
+`add_centroid()` (animetric), `get_metadata()` (anicore) and `get_sample_data()` (aniread),
+`as_anipoint()` (anicore) and `as_plot_data()` (anivis). Look the name up.
 
 See `reference/packages.md` for the key exported functions per package.
 
 ## A typical pipeline
 
 ```r
-library(animovement)   # attaches the whole suite
+library(animovement)                          # attaches the seven packages
 
-af <- read_sleap(path) |>          # aniread    — into an anipoint
-  check_confidence() |>            # anicheck   — inspect before cleaning (returns a check object)
-  filter_na_confidence() |>        # aniprocess — mask low-confidence points to NA
-  replace_na_linear() |>           # aniprocess — fill the gaps
-  filter_sgolay() |>               # aniprocess — smooth
-  calculate_kinematics()           # animetric  — speed, acceleration, …
+af <- read_sleap(path)                        # aniread    — an anipoint
+af <- set_metadata(af, sampling_rate = fps)   # anicore    — if the reader recorded none
 
-plot_trajectory(af)                # anivis
+plot(check_confidence(af))                    # anicheck   — a side branch: returns a check object, not a frame
+
+af <- af |>
+  filter_na_across("confidence") |>           # aniprocess — mask low-confidence points to NA
+  replace_na_across("linear") |>              # aniprocess — fill the gaps
+  filter_across("sgolay") |>                  # aniprocess — smooth; sampling_rate is read from metadata
+  calculate_kinematics()                      # animetric  — speed, acceleration, course, …
+
+plot_trajectory(af)                           # anivis
 ```
 
-That arc — read → check → clean → transform → measure → plot — is the shape of
-nearly every task here. **The arguments above are omitted deliberately**: most of these
-functions take parameters with no safe default (thresholds, window sizes), so look each
-one up rather than copying this as working code.
+That arc — read → check → clean → transform → measure → plot — is the shape of nearly every
+task here. **The tuning arguments are omitted deliberately**: thresholds, gap lengths and
+window widths have defaults, but none is a safe choice for unseen data, so look each one up
+rather than copying this as working code. The `*_across()` verbs are marked experimental.
+
+**aniprocess has two tiers.** `filter_na_across()`, `replace_na_across()` and
+`filter_across()` take a whole frame, work on its declared position columns within its
+grouping, and fill in what the frame knows (index, `sampling_rate`, `confidence`). The
+specific functions — `filter_na_confidence()`, `replace_na_linear()`, `filter_sgolay()`, … —
+and the `*_with()` dispatchers take a vector or a `pick()`ed data frame, for use inside
+`mutate()`; they are not frame-level verbs.
 
 ## Naming traps
 
-- **`filter_*` means signal filtering, not row subsetting.** `filter_na_confidence()`
-  masks bad points to NA and `filter_sgolay()` smooths; neither drops rows. `dplyr::filter()`
-  also works on an aniframe and *does* subset rows. Read which one is meant.
-- **Angle helpers are split.** `wrap_angle()`, `unwrap_angle()`, `deg_to_rad()` and
-  `rad_to_deg()` are in **anicore**; `diff_angle()` and `calculate_angular_difference()` are
-  in **anispace**; `mean_angle()` and `median_angle()` are in **animetric**.
-- **`calculate_*` and `compute_*` both appear in animetric** and are not interchangeable;
-  each function has one spelling (`calculate_nnd()` and `compute_nnd()` both exist, most
-  others do not pair up).
+- **`filter_*` means signal filtering, not row subsetting.** `filter_na_across()` masks bad
+  points to NA and `filter_across()` smooths; neither drops rows. `dplyr::filter()` also works
+  on an aniframe and *does* subset rows. Read which one is meant.
+- **Every angle utility is in anicore**: `wrap_angle()`, `unwrap_angle()`, `deg_to_rad()`,
+  `rad_to_deg()`, `angle_to_rad()` / `angle_from_rad()` (values ↔ a frame's `unit_angle`),
+  `angle_between()`, and the circular statistics `circ_mean()`, `circ_median()`, `circ_sd()`,
+  `circ_mad()`, `circ_difference()`, `circ_successive_difference()`. Of the angle maths,
+  anispace keeps only quaternions (`quat_*()`). Gone: animetric's `mean_angle()` /
+  `median_angle()` (use `circ_mean()` / `circ_median()` — the median gives **different
+  numbers**, since the old one was not rotation-equivariant) and anispace's
+  `calculate_angular_difference()` / `diff_angle()` (now `circ_difference()` /
+  `circ_successive_difference()`).
+- **Course is not heading.** animetric's velocity-derived angles describe the *path*: `course`
+  (direction of travel), `course_unwrapped`, `turning_rate`, `turning_speed`,
+  `turning_acceleration`, `cumulative_turning`; the summaries are `*_course`, `*_turning_*` and
+  `total_turning`. `heading` and angular velocity are reserved for the *body* — where the animal
+  faces, declared as orientation. The old names (`heading`, `angular_velocity`, …) were renamed
+  in animetric's development version; which measures exist for which dimensionality is in the
+  `calculate_kinematics()` reference page.
+- **`calculate_*` and `compute_*` are not interchangeable.** `calculate_*()` takes an anipoint
+  and returns it with columns added. `compute_*()` are lower-level primitives: most take vectors
+  (`compute_nnd()`, `compute_straightness()`, `compute_gradient()`); `compute_centroid()` returns
+  a frame holding only the centroid, where `add_centroid()` appends it.
+- **Say which identity level you mean.** `calculate_nnd()` always needs `across`;
+  `add_centroid()` / `compute_centroid()` need `across` once the frame declares more than one
+  identity variable; anispace's `translate_coords()`, `rotate_coords()` and
+  `transform_to_egocentric()` then need `level`, naming the variable their reference point
+  belongs to, and take `to` / `align` / `about` / `by` (formerly `to_keypoint`,
+  `alignment_points`, `to_x` …).
 - **Both British and American spellings** are exported for much of the suite
   (`summarise`/`summarize`, `colour`/`color`) — but not universally, so check rather than assume.
 - **An aniframe stays grouped by identity and temporal context.** Operations run
   within-track by design; if a result looks per-individual when you expected it pooled, that
   is why. Regrouping warns, and operations that derive from successive rows (speed, path
   length) refuse a grouping that pools several trajectories.
-- **The identity order is not a hierarchy.** `variables_what` is not ordered coarse to fine,
+- **The identity order is not a hierarchy.** The `what` keys are not ordered coarse to fine,
   identity variables need not nest, and there is no "finest" level to infer. Where a function
   collapses one, it asks which.
+
+## Changes that alter results without an error
+
+Worth knowing when re-running an older analysis on current packages; `NEWS.md` has the rest.
+
+- `filter_rollmean()` / `filter_rollmedian()` centre their window by default (they were
+  right-aligned, which lagged the signal). The ends are now `NA`; `align = "right"` restores
+  the old behaviour.
+- `read_sleap()` names individuals by the track names an h5 file records, not
+  `individual1`, `individual2`, ….
+- animetric's angular measures come back in the frame's `unit_angle`; a frame declared in
+  degrees used to get radians.
+- `median_course` (formerly `median_heading`) is computed with `circ_median()`; the old value
+  could be 180 degrees off when tied directions straddled zero.
 
 ## The aniframe data model
 
@@ -86,8 +139,9 @@ coordinates are needed. Each frame's metadata declares column roles as slots:
 - **`when$index`**: the single column the frame is indexed by, `time` by default. Never a grouping variable.
 - **`when$keys`**: temporal *context*, recognised `observation`, `session`, `trial`.
 - **`where$position`**: maps each axis role (`x`, `y`, `z`, `rho`, `phi`, `theta`) to the
-  column carrying it. The role set is closed; the column names are free. Optional
-  `where$orientation` (`yaw`, or a quaternion).
+  column carrying it. The role set is closed; the column names are free.
+- **`where$orientation`** (optional): which way the entity faces — `yaw` in 2D, or a unit
+  quaternion `qw`, `qx`, `qy`, `qz` in 3D. Declared, never detected from column names.
 - Plus an optional `confidence` column.
 
 Roles are detected from the recognised names, or set with
@@ -104,24 +158,59 @@ teams) relate the levels of a variable. Full detail in `reference/aniframe-model
 
 ## Conventions
 
-- **Verb-first names** (`read_*`, `filter_*`, `calculate_*`, `plot_*`, …); the verb tells you the package (table above), so function names are largely predictable.
-- **2D vs 3D** is handled by the presence of a `z` (or third `where`) column — most functions branch on it internally.
-- Plot methods dispatch on the object: `plot(anipoint)` → trajectory, `plot(anievent)` → events; check objects have their own `plot()` methods in anivis.
+- **Coordinates are found by role, not by name.** The coordinate system follows from the
+  declared axis roles (`get_axes()`, `get_coordinate_system()`, `is_cartesian_2d()`, …), and
+  functions read the axes and the index from the frame, so columns may be called anything.
+  Do not branch on whether a column is called `z`.
+- **Units of angles.** Angles a function derives come back in the frame's `unit_angle`:
+  animetric's kinematics and summaries, `as_anijoint()`, anispace's `map_to_*()`. The
+  primitives work in radians: `angle_between()`, the `circ_*()` family, `wrap_angle()`, and
+  anispace's component converters (`cartesian_to_phi()`, `polar_to_x()`, …). Code that
+  computes angles from a frame reads them with `angle_to_rad()` and writes them back with
+  `angle_from_rad()`; `convert_unit_angle()` converts the frame and its metadata, declared
+  orientation included.
+- **Sign of angles.** Signed angles run from `x` toward `y`. `get_angle_direction()` says
+  whether that is clockwise or counter-clockwise as viewed. aniread's image-plane readers
+  reflect `y` to point up, so their angles run counter-clockwise. To change convention, change
+  the coordinates with `reflect_axis()`; the angles follow.
+- **Plot methods dispatch on the object**: `plot(anipoint)` → trajectory, `plot(anievent)` →
+  events. Check objects get `plot()`, `summary()` and `print()` methods from anicheck; its
+  `plot()` hands off to anivis, and prompts to install it if missing. The checks accept an
+  anipoint only.
+- **Skeletons are read separately**: `aniread::read_structure()` (or `_deeplabcut()` /
+  `_sleap()`) gives an anistructure, attached with `anicore::set_structure()`. The frame readers
+  do not attach one. `read_boris()` returns an anievent, not an anipoint.
+- **Persisting**: `write_aniframe()` to parquet keeps the metadata; CSV and TSV lose it.
+  `read_aniframe()` reads parquet only, and restores an anipoint or an anievent — not an
+  anisegment or anijoint.
+- **Installing**: the packages are on R-universe, not CRAN:
+  `install.packages("animovement", repos = c("https://animovement.r-universe.dev", "https://cloud.r-project.org"))`.
 
 ## Verifying against source
 
 The API evolves — **do not rely on remembered signatures**. Every package publishes its
-documentation as markdown, generated from the source, so it cannot drift from the installed
-package:
+documentation as markdown, generated from the source:
 
 - `https://animovement.dev/<package>/llms.txt` — every exported function, grouped, with a
-  one-line description. Start here to find out whether a function exists and which package
-  owns it.
-- `https://animovement.dev/<package>/reference/<function>.md` — the full help page for one
-  function, including its exact signature and arguments.
+  one-line description and a link to its help page. Start here to find out whether a
+  function exists and which package owns it.
+- `https://animovement.dev/<package>/reference/<topic>.md` — the full help page, including
+  exact signatures and arguments. The topic is usually the function name, but not always:
+  `set_variables()` is on `variables.md`, `angle_from_rad()` on `angle_to_rad.md`, the
+  `quat_*()` functions on `quaternions.md`. Follow the link in `llms.txt` rather than
+  constructing the URL.
+
+**A reference page loading does not mean the function exists.** The site is deployed without
+deleting old pages, so pages for removed functions are still served (animetric's
+`mean_angle.md`, anispace's `diff_angle.md`). Existence is settled by `llms.txt` or the
+package's `NAMESPACE`.
+
+**The site can lag `main`.** On a development install, the installed package's `NAMESPACE`
+and the development section of its `NEWS.md` win. Renames and removals are recorded in
+`NEWS.md`, so read it when a name you expected is missing.
 
 `reference/packages.md` in this skill is a *map* — it is deliberately incomplete and can
-lag the packages. Where it and the generated docs disagree, the generated docs are right.
-
-If the source is checked out locally, that package's `R/` and `NAMESPACE` are equally
-authoritative. Either way, confirm arguments and defaults before calling something.
+lag the packages. Where it disagrees with the generated docs or the installed package, they
+are right.
+If the source is checked out locally, that package's `R/`, `NAMESPACE` and `NEWS.md` are
+equally authoritative. Either way, confirm arguments and defaults before calling something.
