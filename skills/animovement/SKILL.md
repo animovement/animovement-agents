@@ -29,7 +29,7 @@ Eight packages. `anipoint`, `anisegment`, `anijoint`, `anievent` and `anistructu
 | **animovement** | The metapackage. `library(animovement)` attaches the seven below and resolves versions; it owns no analysis functions | `animovement_` (install, update, conflicts, sitrep) |
 | **anicore** | The frame classes, metadata, units, axes, orientation, structures, grouping, and **every angle utility** | `as_` `is_` `ensure_` `get_` `set_` `add_` `remove_` `convert_` `reflect_` `validate_` `example_` `list_` `to_` `circ_` `angle_`, constructors `anipoint()` `anievent()` `anistructure()` |
 | **aniread** | Reading tracker output into an anipoint (BORIS into an anievent), skeletons into an anistructure, writing frames back | `read_` `write_` `detect_` `get_` `calibrate_` `validate_` |
-| **aniprocess** | Signal processing: NA masking, gap filling, smoothing/filtering, peaks | `filter_` `filter_na_` `replace_na_` `find_` |
+| **aniprocess** | Signal processing: NA masking, gap filling, smoothing/filtering, peaks | `mask_na_` `replace_na_` `filter_` `find_` |
 | **animetric** | Metrics: kinematics, tortuosity, nearest-neighbour, derived points, orientation from points, summaries | `calculate_` `compute_` `summarise_`/`summarize_` `add_`, plus `differentiate()` |
 | **anivis** | Plot methods, themes, palettes, colour scales, figure layout | `plot_` `theme_` `scale_` `geom_` `palette_`, plus `as_plot_data()` `*_colors()` `plots()` |
 | **anicheck** | Data-quality diagnostics on an anipoint (return check objects) | `check_` |
@@ -53,7 +53,7 @@ af <- set_metadata(af, sampling_rate = fps)   # anicore    — if the reader rec
 plot(check_confidence(af))                    # anicheck   — a side branch: returns a check object, not a frame
 
 af <- af |>
-  filter_na_across("confidence") |>           # aniprocess — mask low-confidence points to NA
+  mask_na_across("confidence") |>             # aniprocess — mask low-confidence points to NA
   replace_na_across("linear") |>              # aniprocess — fill the gaps
   filter_across("sgolay") |>                  # aniprocess — smooth; sampling_rate is read from metadata
   calculate_kinematics()                      # animetric  — speed, acceleration, course, …
@@ -66,18 +66,20 @@ task here. **The tuning arguments are omitted deliberately**: thresholds, gap le
 window widths have defaults, but none is a safe choice for unseen data, so look each one up
 rather than copying this as working code. The `*_across()` verbs are marked experimental.
 
-**aniprocess has two tiers.** `filter_na_across()`, `replace_na_across()` and
+**aniprocess has two tiers.** `mask_na_across()`, `replace_na_across()` and
 `filter_across()` take a whole frame, work on its declared position columns within its
 grouping, and fill in what the frame knows (index, `sampling_rate`, `confidence`). The
-specific functions — `filter_na_confidence()`, `replace_na_linear()`, `filter_sgolay()`, … —
+specific functions — `mask_na_confidence()`, `replace_na_linear()`, `filter_sgolay()`, … —
 and the `*_with()` dispatchers take a vector or a `pick()`ed data frame, for use inside
 `mutate()`; they are not frame-level verbs.
 
 ## Naming traps
 
-- **`filter_*` means signal filtering, not row subsetting.** `filter_na_across()` masks bad
-  points to NA and `filter_across()` smooths; neither drops rows. `dplyr::filter()` also works
-  on an aniframe and *does* subset rows. Read which one is meant.
+- **`filter_*` means signal filtering, not row subsetting.** `filter_across()` smooths and
+  `mask_na_across()` masks bad points to NA; neither drops rows. `dplyr::filter()` also works
+  on an aniframe and *does* subset rows. Read which one is meant. The masking functions were
+  called `filter_na_*()` until aniprocess 0.5.0; the old names still work, with a deprecation
+  warning, until the release after.
 - **Every angle utility is in anicore**: `wrap_angle()`, `unwrap_angle()`, `deg_to_rad()`,
   `rad_to_deg()`, `angle_to_rad()` / `angle_from_rad()` (values ↔ a frame's `unit_angle`),
   `angle_between()`, and the circular statistics `circ_mean()`, `circ_median()`, `circ_sd()`,
