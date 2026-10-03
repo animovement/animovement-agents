@@ -65,11 +65,12 @@ turn `y` to point up.
 
 ## animetric — movement-based metrics
 
-- **Kinematics:** `calculate_kinematics()` — velocity and acceleration components named by axis role (`v_x`, …), speed, acceleration, path length, and the path-direction measures (`course`, `turning_rate`, …; which dimensions get them is on its reference page); angles in the frame's `unit_angle`. Also `differentiate()`, `compute_gradient()`, `is_aniframe_kin()`
+- **Kinematics:** `calculate_kinematics()` — velocity and acceleration components named by axis role (`v_x`, …), speed, acceleration, path length, and the path-direction measures (`course`, `turning_rate`, …; which dimensions get them is on its reference page); angles in the frame's `unit_angle`; in 3D, `vertical =` names the world's up axis for course and elevation. Also `differentiate()`, `compute_gradient()`
 - **Path complexity:** `calculate_tortuosity()`, `compute_sinuosity()`, `compute_straightness()`, `compute_emax()`
 - **Spatial relations:** `calculate_nnd()` (needs `across`) / `compute_nnd()` (nearest-neighbour distance)
-- **Centroids:** `add_centroid()` appends one as a new member of an identity level; `compute_centroid()` returns a frame holding it alone. Both take `across` to say which level collapses, required once the frame declares more than one
-- **Summaries:** `summarise_kinematics()`, `summarise_tortuosity()`, `summarise_aniframe()`, each with a `summarize_*` alias
+- **Derived points:** `add_point()` appends a new member of an identity level at each moment — `method = "centroid"` (default), `"median"`, `"weighted"` (by `confidence`) or a function — and derives its orientation too; `compute_point()` returns it alone. Both take `across` to say which level collapses, required once the frame declares more than one. `add_centroid()` / `compute_centroid()` are deprecated
+- **Orientation from points:** `add_orientation(data, from, to, plane, perpendicular, attach_to, level)` declares `heading` (2D) or a quaternion (3D, where `plane` — any third point off the `from`–`to` line — fixes roll); `perpendicular = TRUE` for an axis across the body (eye to eye); `attach_to` puts it on chosen members
+- **Summaries:** `summarise_aniframe()` (distribution of per-row measures; methods for anipoint, anisegment, anijoint; `cols =`, `measures =`) and `summarise_path()` (whole-trajectory geometry), each with a `summarize_*` alias. `summarise_kinematics()` / `summarise_tortuosity()` are deprecated
 - Circular statistics are anicore's `circ_*()`; `mean_angle()` and `median_angle()` are removed
 
 ## anivis — visualisation
@@ -90,5 +91,7 @@ turn `y` to point up.
 - **Rigid transforms:** `translate_coords()`, `rotate_coords()`, `transform_to_egocentric()` — the reference point is a member of an identity `level`, named with `to`, `align`, `about`, or an offset `by`
 - **Component converters** (radians): `cartesian_to_rho/phi/theta()`, `polar_to_x/y()`, `spherical_to_z()`
 - **Quaternions** (3D orientation): `quat_multiply()`, `quat_conjugate()`, `quat_normalise()`, `quat_rotate()`, `quat_distance()`; `quat_from_/quat_to_axis_angle()`, `_matrix()`, `_euler()`; `quat_slerp()`, `quat_mean()`, `quat_continuous()`, `quat_angular_velocity()`
+- **Quaternions from axes:** `quat_from_vectors(primary, secondary, axes)` — the orientation whose body axis `axes[1]` points along `primary` and whose `axes[2]` points towards `secondary` (only its part perpendicular to `primary` counts); the primitive behind animetric's `add_orientation()`
+- **Orientation in transforms:** `rotate_coords()` / `transform_to_egocentric()` turn a declared orientation with the positions; `transform_to_egocentric(align = "orientation")` aligns each subject by its own declared orientation
 - **Orientation on a frame:** `transform_euler_to_quaternion()` declares a quaternion orientation from exported Euler angles and records their convention; `transform_quaternion_to_euler()` gives them back
 - No angle utilities live here any more: `wrap_angle()`, `circ_difference()` and the rest are in **anicore**.

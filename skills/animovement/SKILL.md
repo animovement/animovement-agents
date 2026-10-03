@@ -30,14 +30,14 @@ Eight packages. `anipoint`, `anisegment`, `anijoint`, `anievent` and `anistructu
 | **anicore** | The frame classes, metadata, units, axes, orientation, structures, grouping, and **every angle utility** | `as_` `is_` `ensure_` `get_` `set_` `add_` `remove_` `convert_` `reflect_` `validate_` `example_` `list_` `to_` `circ_` `angle_`, constructors `anipoint()` `anievent()` `anistructure()` |
 | **aniread** | Reading tracker output into an anipoint (BORIS into an anievent), skeletons into an anistructure, writing frames back | `read_` `write_` `detect_` `get_` `calibrate_` `validate_` |
 | **aniprocess** | Signal processing: NA masking, gap filling, smoothing/filtering, peaks | `filter_` `filter_na_` `replace_na_` `find_` |
-| **animetric** | Metrics: kinematics, tortuosity, nearest-neighbour, centroids, summaries | `calculate_` `compute_` `summarise_`/`summarize_`, plus `add_centroid()` `differentiate()` `is_aniframe_kin()` |
+| **animetric** | Metrics: kinematics, tortuosity, nearest-neighbour, derived points, orientation from points, summaries | `calculate_` `compute_` `summarise_`/`summarize_` `add_`, plus `differentiate()` |
 | **anivis** | Plot methods, themes, palettes, colour scales, figure layout | `plot_` `theme_` `scale_` `geom_` `palette_`, plus `as_plot_data()` `*_colors()` `plots()` |
 | **anicheck** | Data-quality diagnostics on an anipoint (return check objects) | `check_` |
 | **anispace** | Coordinate-system maps, rigid transforms, egocentric frames, quaternions | `map_to_` `transform_` `rotate_` `translate_` `quat_` `cartesian_to_` `polar_to_` `spherical_to_` |
 
 **A prefix narrows the search; it does not settle it.** `add_`, `get_`, `is_`, `as_` and
 `validate_` each occur in more than one package — `add_variables()` (anicore) and
-`add_centroid()` (animetric), `get_metadata()` (anicore) and `get_sample_data()` (aniread),
+`add_point()` (animetric), `get_metadata()` (anicore) and `get_sample_data()` (aniread),
 `as_anipoint()` (anicore) and `as_plot_data()` (anivis). Look the name up.
 
 See `reference/packages.md` for the key exported functions per package.
@@ -93,13 +93,24 @@ and the `*_with()` dispatchers take a vector or a `pick()`ed data frame, for use
   `total_turning`. `heading` and angular velocity are reserved for the *body* — where the animal
   faces, declared as orientation. The old names (`heading`, `angular_velocity`, …) were renamed
   in animetric's development version; which measures exist for which dimensionality is in the
-  `calculate_kinematics()` reference page.
+  `calculate_kinematics()` reference page. In 3D, `course`, `course_elevation` and the signed
+  `turning_rate` need `calculate_kinematics(vertical = "z")` (or whichever axis points up in the
+  world): `axis_directions` are relative to the camera and cannot say which way gravity is.
+- **Two kinds of summary.** `summarise_aniframe()` gives the *distribution* of per-row measures
+  (median speed, circular mean course, median of windowed straightness), one row per group at
+  any grouping; it is an S3 generic with methods for anipoints, anisegments (`length`) and
+  anijoints (`angle`, circular). `summarise_path()` gives whole-trajectory geometry
+  (`total_path_length`, `net_displacement`, whole-path `straightness`, `sinuosity`, `emax`,
+  `total_turning`) and needs one trajectory per group. Neither needs `calculate_kinematics()`
+  run first. `summarise_kinematics()`, `summarise_tortuosity()`, `add_centroid()`,
+  `compute_centroid()` and `is_aniframe_kin()` are deprecated, and the `aniframe_kin` class is
+  retired — check for the columns you need instead of a class.
 - **`calculate_*` and `compute_*` are not interchangeable.** `calculate_*()` takes an anipoint
   and returns it with columns added. `compute_*()` are lower-level primitives: most take vectors
-  (`compute_nnd()`, `compute_straightness()`, `compute_gradient()`); `compute_centroid()` returns
-  a frame holding only the centroid, where `add_centroid()` appends it.
+  (`compute_nnd()`, `compute_straightness()`, `compute_gradient()`); `compute_point()` returns
+  a frame holding only the derived point, where `add_point()` appends it.
 - **Say which identity level you mean.** `calculate_nnd()` always needs `across`;
-  `add_centroid()` / `compute_centroid()` need `across` once the frame declares more than one
+  `add_point()` / `compute_point()` need `across` once the frame declares more than one
   identity variable; anispace's `translate_coords()`, `rotate_coords()` and
   `transform_to_egocentric()` then need `level`, naming the variable their reference point
   belongs to, and take `to` / `align` / `about` / `by` (formerly `to_keypoint`,
@@ -127,6 +138,10 @@ Worth knowing when re-running an older analysis on current packages; `NEWS.md` h
   degrees used to get radians.
 - `median_course` (formerly `median_heading`) is computed with `circ_median()`; the old value
   could be 180 degrees off when tied directions straddled zero.
+- `calculate_kinematics()` returns a plain anipoint: the `aniframe_kin` class is gone, so code
+  testing `inherits(x, "aniframe_kin")` now gets `FALSE`.
+- anispace's `rotate_coords()` and `transform_to_egocentric()` turn a declared orientation with
+  the positions; it used to be left stale.
 
 ## The aniframe data model
 

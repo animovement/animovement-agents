@@ -61,6 +61,9 @@ get_axes(x)                            # where$position, named by axis role
   `aniread::read_fictrac()` and `read_trex()` declare a `yaw`. An axial angle with no front
   (Bonsai's and Octron's blob orientation) is deliberately left undeclared:
   animovement/anicore#165.
+- **Orientation can be derived from points.** animetric's `add_orientation()` declares it from
+  two points (2D) or three (3D: the third fixes roll), attached to chosen members; the
+  quaternion comes from anispace's `quat_from_vectors()`.
 - **Direction of travel is not orientation.** It is derived from the path — animetric's
   `course` — and stays an ordinary column. animetric keeps the name `heading` for where the
   body faces.
