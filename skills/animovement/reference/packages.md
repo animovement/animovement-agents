@@ -54,11 +54,11 @@ turn `y` to point up.
 
 ## aniprocess — signal processing & filtering
 
-`filter_*` here means **signal filtering**, never row subsetting. Two tiers:
+`filter_*` here means **signal filtering**, never row subsetting, and `mask_na_*` sets bad values to `NA`, keeping the rows (they were `filter_na_*` until 0.5.0; the old names are deprecated). Two tiers:
 
-- **Whole frame** (experimental): `filter_na_across()`, `replace_na_across()`, `filter_across()` — take an aniframe and a method name, act on the declared position columns within the frame's grouping, and read the index, `sampling_rate` and `confidence` from the frame
-- **Column level** — take a vector or a `pick()`ed data frame, inside `mutate()`; `filter_na_with()`, `replace_na_with()` and `filter_with()` choose the method by name:
-  - **NA masking:** `filter_na_confidence()`, `filter_na_excursion()`, `filter_na_speed()`, `filter_na_range()`, `filter_na_roi()`
+- **Whole frame** (experimental): `mask_na_across()`, `replace_na_across()`, `filter_across()` — take an aniframe and a method name, act on the declared position columns within the frame's grouping, and read the index, `sampling_rate` and `confidence` from the frame
+- **Column level** — take a vector or a `pick()`ed data frame, inside `mutate()`; `mask_na_with()`, `replace_na_with()` and `filter_with()` choose the method by name:
+  - **NA masking:** `mask_na_confidence()`, `mask_na_excursion()`, `mask_na_hampel()`, `mask_na_speed()`, `mask_na_range()`, `mask_na_roi()`, and, outside both tiers, `mask_na_segment_length()`, which takes a whole anipoint with a structure attached
   - **Gap filling:** `replace_na_linear()`, `replace_na_spline()`, `replace_na_stine()`, `replace_na_locf()`, `replace_na_value()`
   - **Smoothing / filtering:** `filter_sgolay()`, `filter_gaussian()`, `filter_triangular()`, `filter_rollmean()`, `filter_rollmedian()` (both centred by default), `filter_lowpass[_fft]()`, `filter_highpass[_fft]()`, `filter_kalman[_irregular]()`, `filter_ccma()`, `filter_one_euro()`
 - **Peaks:** `find_peaks()`, `find_troughs()`
