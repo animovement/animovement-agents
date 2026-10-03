@@ -3,8 +3,8 @@
   Edit it there; the Sync agent docs workflow opens a pull request with the change.
 
   Source: https://github.com/animovement/.github/blob/main/.github/PULL_REQUEST_TEMPLATE.md
-  Commit: 37da74bf2231c0dceed8ce1af6988763c0065f82
-  Synced: 2026-08-25
+  Commit: 071b8f06bc77729d23d32e474d85f0ea9c0a1afe
+  Synced: 2026-10-03
 
   This copy can lag its source. If a detail matters, check the URL above.
 -->
@@ -49,5 +49,7 @@ Fill in as much of this as you can. If anything is unclear, leave a comment and 
 - [ ] Tests have been added covering new functionality
 - [ ] Documentation regenerated if roxygen comments changed (`devtools::document()`, or comment `/document` on this PR)
 - [ ] Code is formatted with [air](https://posit-dev.github.io/air/) (or comment `/style` on this PR)
-- [ ] A `NEWS.md` bullet added under `# (development version)` for any user-facing change
+- [ ] A `NEWS.md` bullet added under `# <package> (development version)` for any user-facing change
+- [ ] Title is a [Conventional Commit](https://github.com/animovement/.github/blob/main/CONTRIBUTING.md#commit-messages); with a single commit, its message matches the title
+- [ ] Development version bumped, if another package will require this change or it has to reach the conda channel on prefix.dev
 - [ ] I have read and understood every change I am submitting, and tested it myself
