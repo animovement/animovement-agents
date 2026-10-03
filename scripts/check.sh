@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Validate the packaging: the Claude Code manifests, and that the Open Plugins manifest at
-# the root agrees with them. Two manifests wrapping one skill is the only duplication in
-# this repository, so it is the one thing worth asserting.
+# Validate the packaging: the Claude Code manifests, that the Open Plugins manifest at the
+# root agrees with them, and that a change to the skills comes with a version bump. Two
+# manifests wrapping the skills is the only duplication in this repository, and the version
+# is what makes installs pick a change up, so those are the things worth asserting.
 
 set -euo pipefail
 
@@ -52,6 +53,27 @@ for key in name version description license; do
     note "$key differs: plugin.json='$open' .claude-plugin/plugin.json='$claude_'"
   fi
 done
+
+# Installs only pick up a change when the version moves, so a change under skills/ without
+# a bump ships to nobody (the docs refresh before 0.6.0 did exactly that). Compared against
+# where this branch left origin/main; skipped, not failed, where that cannot be worked out.
+base_ref="${CHECK_BASE_REF:-origin/main}"
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "! not a git checkout — skipped the version-bump check" >&2
+elif ! git rev-parse --verify --quiet "$base_ref^{commit}" >/dev/null; then
+  echo "! $base_ref not available (git fetch origin, or a full-depth checkout) — skipped the version-bump check" >&2
+elif ! base=$(git merge-base "$base_ref" HEAD 2>/dev/null); then
+  echo "! no common ancestor with $base_ref — skipped the version-bump check" >&2
+elif ! git diff --quiet "$base" -- skills/; then
+  base_version=$(git show "$base:plugin.json" 2>/dev/null \
+    | python3 -c 'import json,sys; print(json.load(sys.stdin).get("version",""))' 2>/dev/null || true)
+  head_version=$(field plugin.json version)
+  if [ -z "$base_version" ]; then
+    echo "! could not read the version on $base_ref — skipped the version-bump check" >&2
+  elif [ "$base_version" = "$head_version" ]; then
+    note "skills/ changed since $base_ref but the version is still $head_version — bump it in plugin.json and .claude-plugin/plugin.json"
+  fi
+fi
 
 if command -v claude >/dev/null 2>&1; then
   claude plugin validate . --strict

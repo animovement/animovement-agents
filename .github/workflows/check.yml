@@ -1,6 +1,7 @@
 # The repository root is a plugin twice over: plugin.json for Open Plugins consumers and
-# .claude-plugin/plugin.json for Claude Code. Two manifests over one skill is the only
-# duplication this layout cannot avoid, so assert they stay in agreement.
+# .claude-plugin/plugin.json for Claude Code. Two manifests over the skills is the only
+# duplication this layout cannot avoid, so assert they stay in agreement, and that a change
+# to the skills bumps the version they carry.
 name: Check packaging
 
 on:
@@ -14,4 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # check.sh compares skills/ and the version against origin/main, which a
+          # shallow checkout does not have.
+          fetch-depth: 0
       - run: ./scripts/check.sh

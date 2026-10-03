@@ -58,20 +58,43 @@ previously installed build.
 
 ## CI
 
-All six workflows are **reusable workflows** in `animovement/.github`, called by trigger-only
-stubs in each package:
+The jobs are **reusable workflows** in `animovement/.github`; each package carries
+trigger-only stubs that call them. There are seven:
 
-| Workflow | Does |
-|---|---|
-| `R-CMD-check` | `R CMD check` on Linux, macOS and Windows |
-| `pkgdown` | builds and deploys the package site |
-| `test-coverage` | reports coverage to Codecov |
-| `format-suggest` | suggests air formatting fixes on the pull request |
-| `pr-commands` | the `/document` and `/style` comment commands |
-| `release-to-zulip` | announces a GitHub release in Zulip |
+| Workflow | Does | Stub in the packages |
+|---|---|---|
+| `R-CMD-check` | `R CMD check`, plus the `anicore-metadata-contract` job | yes |
+| `pkgdown` | builds the site; deploys only outside pull requests | yes |
+| `test-coverage` | reports coverage to Codecov | yes |
+| `format-suggest` | suggests air formatting fixes on the pull request, and fails while any remain | yes |
+| `pr-commands` | the `/document` and `/style` comment commands, for organisation members and owners only | yes |
+| `release-to-zulip` | announces a GitHub release in Zulip | yes |
+| `pr-title` | checks the pull request title is a Conventional Commit | **no** — called by `animovement/.github` and `animovement-agents`, by none of the eight packages |
 
-A new package needs the **stubs**, not copies of the workflows. A stub declares only the
-trigger and delegates:
+**`R-CMD-check` matrix.** A pull request runs R release on Ubuntu, macOS and Windows, plus
+Ubuntu `oldrel-1`. A push to `main` adds Ubuntu R-devel, which has no binaries.
+
+**`anicore-metadata-contract`** runs in every package except anicore. It greps `R/` for raw
+metadata access — `attr(..., "metadata")`, `$variables_*`, `[["variables_*"]]` — and fails
+on any hit outside a comment line. A line that genuinely needs the raw attribute opts out
+with a trailing `# anicore: allow-metadata` on the same line. air moves a comment that trails
+`{`, so put such a read in an assignment of its own.
+
+**Required checks.** Each package's `Protect main` ruleset requires the four R-CMD-check
+configurations, `pkgdown / pkgdown`, `test-coverage / test-coverage` and
+`format-suggest / format-suggest`. The metadata-contract job and the Codecov statuses are not
+required. The ruleset allows merge, squash and rebase; squashing is a convention, not a
+setting.
+
+**Codecov.** Each analysis package has a `codecov.yml` with project and patch status at
+`target: auto`, `threshold: 1%`, `informational: true` — reported, never blocking. The
+metapackage has none. Recent pull requests have landed with every changed line covered.
+
+**The stubs.** The canonical copy of each lives in
+[`workflows/stubs/`](https://github.com/animovement/.github/tree/main/workflows/stubs) in
+`animovement/.github`. Its **Sync workflow stubs** workflow opens a pull request wherever a
+package's copy differs — but it only updates a stub that already exists and never creates
+one, so a new package copies them in once. A stub declares only the trigger and delegates:
 
 ```yaml
 name: format-suggest
@@ -87,9 +110,11 @@ jobs:
     secrets: inherit
 ```
 
-Change the shared workflow, never the stub. `format-suggest` uses `pull_request_target`
-rather than `pull_request` deliberately, so that `pull-requests: write` is available for
-pull requests from forks — it only reads and reformats the code, never executes it.
+Change the shared workflow or the canonical stub, never a package's copy — the next sync
+puts it back. `format-suggest` uses `pull_request_target` rather than `pull_request`
+deliberately, so that `pull-requests: write` is available for pull requests from forks — it
+only reads and reformats the code, never executes it. The stubs behind the required checks
+trigger on every pull request whatever its base, so stacked pull requests run them all.
 
 The pkgdown theme comes from
 [`animovementtemplate`](https://github.com/animovement/animovementtemplate), so sites stay
@@ -128,3 +153,43 @@ install.packages(
 emscripten binaries for R 4.6 only, so a package failing to appear in the playground is
 usually that, not a fault in the package. Worth checking before debugging a playground
 failure.
+
+### Conda (prefix.dev)
+
+The packages are also built for conda, as `r-<pkg>` in the
+[animovement channel on prefix.dev](https://prefix.dev/channels/animovement), from
+rattler-build recipes in
+[animovement-forge](https://github.com/animovement/animovement-forge).
+
+- A **nightly job** reads each package's `Version` and `RemoteSha` from the R-universe API
+  and pins its recipe to that commit. When any recipe changes, every package is rebuilt, but
+  the upload skips versions the channel already holds, so **only a version change publishes**. Commits merged
+  without a version bump do not reach prefix.dev until the next one.
+- **Recipes list their dependencies by hand.** The nightly updates only the version and
+  commit, so a dependency added to `DESCRIPTION` must also be added to the recipe, or the
+  conda build breaks.
+
+## Adding a package
+
+A new package has to be registered in each of these. Copy from an existing package rather
+than starting fresh.
+
+- **`DESCRIPTION`** — MIT licence; `Additional_repositories` if it depends on another
+  `ani*` package; `Config/Needs/website: animovement/animovementtemplate`.
+- **`_pkgdown.yml`** — point it at `animovementtemplate`.
+- **Workflow stubs** — copy all six from `workflows/stubs/` in `animovement/.github`; the
+  sync will not create them.
+- **`codecov.yml`** — copy it from a sibling.
+- **Branch protection** — a `Protect main` ruleset requiring the same seven checks.
+- **`agents/packages.tsv`** in `animovement/.github` — one line, name and role. It drives
+  both **Sync AGENTS.md** and **Sync workflow stubs**.
+- **`AGENTS_SYNC_TOKEN`** — the token those syncs use is set up for selected repositories
+  only (`agents/README.md` in `animovement/.github`), so grant it the new one.
+- **The package table in `CONTRIBUTING.md`** (*Which repository?*), in
+  `animovement/.github`.
+- **R-universe** — add it to `packages.json` in
+  [animovement/animovement.r-universe.dev](https://github.com/animovement/animovement.r-universe.dev).
+- **Conda** — a recipe in animovement-forge, its dependencies mirroring `DESCRIPTION`.
+- **The metapackage** — `animovement`'s `Imports`, and the package lists in `R/attach.R`
+  (what `library(animovement)` attaches) and `R/install_suggested.R`.
+- **This plugin** — the package table in the **animovement** skill, and `reference/packages.md`.
