@@ -28,11 +28,11 @@ Eight packages. `anipoint`, `anisegment`, `anijoint`, `anievent` and `anistructu
 |---|---|---|
 | **animovement** | The metapackage. `library(animovement)` attaches the seven below and resolves versions; it owns no analysis functions | `animovement_` (install, update, conflicts, sitrep) |
 | **anicore** | The frame classes, metadata, units, axes, orientation, structures, grouping, and **every angle utility** | `as_` `is_` `ensure_` `get_` `set_` `add_` `remove_` `convert_` `reflect_` `validate_` `example_` `list_` `to_` `circ_` `angle_`, constructors `anipoint()` `anievent()` `anistructure()` |
-| **aniread** | Reading tracker output into an anipoint (BORIS into an anievent), skeletons into an anistructure, writing frames back | `read_` `write_` `detect_` `get_` `calibrate_` `validate_` |
+| **aniread** | Reading tracker output into an anipoint (BORIS into an anievent), skeletons into an anistructure, writing frames back; `read_dataset()` detects the source and is the entry point | `read_` `write_` `detect_` `get_` `calibrate_` `validate_` |
 | **aniprocess** | Signal processing: NA masking, gap filling, smoothing/filtering, peaks | `mask_na_` `replace_na_` `filter_` `find_` |
-| **animetric** | Metrics: kinematics, tortuosity, nearest-neighbour, derived points, orientation from points, summaries | `calculate_` `compute_` `summarise_`/`summarize_` `add_`, plus `differentiate()` |
+| **animetric** | Metrics: kinematics, tortuosity, nearest-neighbour, derived points, orientation from points, summaries | `add_` `compute_` `summarise_`/`summarize_`, plus `differentiate()` |
 | **anivis** | Plot methods, themes, palettes, colour scales, figure layout | `plot_` `theme_` `scale_` `geom_` `palette_`, plus `as_plot_data()` `*_colors()` `plots()` |
-| **anicheck** | Data-quality diagnostics on an anipoint (return check objects) | `check_` |
+| **anicheck** | Data-quality diagnostics on an anipoint: confidence, missing data, segment lengths (return check objects) | `check_` |
 | **anispace** | Coordinate-system maps, rigid transforms, egocentric frames, quaternions | `map_to_` `transform_` `rotate_` `translate_` `quat_` `cartesian_to_` `polar_to_` `spherical_to_` |
 
 **A prefix narrows the search; it does not settle it.** `add_`, `get_`, `is_`, `as_` and
@@ -47,7 +47,7 @@ See `reference/packages.md` for the key exported functions per package.
 ```r
 library(animovement)                          # attaches the seven packages
 
-af <- read_sleap(path)                        # aniread    — an anipoint
+af <- read_dataset(path)                      # aniread    — detects the source; an anipoint
 af <- set_metadata(af, sampling_rate = fps)   # anicore    — if the reader recorded none
 
 plot(check_confidence(af))                    # anicheck   — a side branch: returns a check object, not a frame
@@ -56,8 +56,9 @@ af <- af |>
   mask_na_across("confidence") |>             # aniprocess — mask low-confidence points to NA
   replace_na_across("linear") |>              # aniprocess — fill the gaps
   filter_across("sgolay") |>                  # aniprocess — smooth; sampling_rate is read from metadata
-  calculate_kinematics()                      # animetric  — speed, acceleration, course, …
+  add_kinematics()                            # animetric  — speed, acceleration, course, …
 
+summarise_path(af)                            # animetric  — one row per trajectory
 plot_trajectory(af)                           # anivis
 ```
 
@@ -95,23 +96,42 @@ and the `*_with()` dispatchers take a vector or a `pick()`ed data frame, for use
   `total_turning`. `heading` and angular velocity are reserved for the *body* — where the animal
   faces, declared as orientation. The old names (`heading`, `angular_velocity`, …) were renamed
   in animetric's development version; which measures exist for which dimensionality is in the
-  `calculate_kinematics()` reference page. In 3D, `course`, `course_elevation` and the signed
-  `turning_rate` need `calculate_kinematics(vertical = "z")` (or whichever axis points up in the
+  `add_kinematics()` reference page. In 3D, `course`, `course_elevation` and the signed
+  `turning_rate` need `add_kinematics(vertical = "z")` (or whichever axis points up in the
   world): `axis_directions` are relative to the camera and cannot say which way gravity is.
+  A step shorter than `min_step` (`"auto"`: from the tracking noise of each trajectory) has no
+  `course` and adds no turning; `min_step = 0` counts every step.
 - **Two kinds of summary.** `summarise_aniframe()` gives the *distribution* of per-row measures
-  (median speed, circular mean course, median of windowed straightness), one row per group at
-  any grouping; it is an S3 generic with methods for anipoints, anisegments (`length`) and
-  anijoints (`angle`, circular). `summarise_path()` gives whole-trajectory geometry
-  (`total_path_length`, `net_displacement`, whole-path `straightness`, `sinuosity`, `emax`,
-  `total_turning`) and needs one trajectory per group. Neither needs `calculate_kinematics()`
-  run first. `summarise_kinematics()`, `summarise_tortuosity()`, `add_centroid()`,
-  `compute_centroid()` and `is_aniframe_kin()` are deprecated, and the `aniframe_kin` class is
-  retired — check for the columns you need instead of a class.
-- **`calculate_*` and `compute_*` are not interchangeable.** `calculate_*()` takes an anipoint
-  and returns it with columns added. `compute_*()` are lower-level primitives: most take vectors
-  (`compute_nnd()`, `compute_straightness()`, `compute_gradient()`); `compute_point()` returns
-  a frame holding only the derived point, where `add_point()` appends it.
-- **Say which identity level you mean.** `calculate_nnd()` always needs `across`;
+  (median speed, circular mean course, `median_straightness_11` from windowed straightness), one
+  row per group at any grouping; it is an S3 generic with methods for anipoints, anisegments
+  (`length`) and anijoints (`angle`, circular). `summarise_path()` gives whole-trajectory
+  geometry (`total_distance`, `net_displacement`, whole-path `straightness`, `sinuosity`,
+  `e_max`, `total_turning`) and needs one trajectory per group. Neither needs `add_kinematics()`
+  run first.
+- **animetric's prefixes say what comes back.** `add_*()` returns the frame with something
+  added: columns (`add_kinematics()`, `add_tortuosity()`, `add_nnd()`), a derived member (`add_point()`) or
+  a declared orientation (`add_orientation()`). `compute_*()` are lower-level primitives: most
+  take vectors (`compute_nnd()`, `compute_straightness()`, `compute_gradient()`);
+  `compute_point()` returns a frame holding only the derived point. `summarise_*()` returns one
+  row per group. No `calculate_` function is left.
+- **Renamed in animetric's development version.** Agents that learned the old names will reach
+  for them; they still run, with a deprecation warning and their old output, until the next
+  release:
+  - `calculate_kinematics()` is now `add_kinematics()`, whose `path_length` is
+    `cumulative_distance`.
+  - `calculate_tortuosity()` is now `add_tortuosity()`, which adds only `straightness_<w>`,
+    `sinuosity_<w>` and `e_max_<w>`, named by the window width (`straightness_11` by default),
+    and no longer the kinematic columns.
+  - `summarise_kinematics()` is now `summarise_aniframe()`, and `summarise_tortuosity()` is
+    `summarise_path()`, where `total_path_length` and `emax` are `total_distance` and `e_max`.
+  - `add_centroid()` / `compute_centroid()` are now `add_point()` / `compute_point()`
+    (`method = "centroid"` by default).
+  - `calculate_nnd()` is now `add_nnd()`. Its columns carry the neighbour rank:
+    `nnd_<n>_<across>`, `nnd_<n>_<variable>` and `nnd_<n>_distance` (e.g. `nnd_1_individual`),
+    so calls with different `n` can sit side by side; split them with `^nnd_(\d+)_(.+)$`.
+  - `is_aniframe_kin()` is deprecated and the `aniframe_kin` class retired: check for the
+    columns you need instead of a class.
+- **Say which identity level you mean.** `add_nnd()` always needs `across`;
   `add_point()` / `compute_point()` need `across` once the frame declares more than one
   identity variable; anispace's `translate_coords()`, `rotate_coords()` and
   `transform_to_egocentric()` then need `level`, naming the variable their reference point
@@ -140,8 +160,19 @@ Worth knowing when re-running an older analysis on current packages; `NEWS.md` h
   degrees used to get radians.
 - `median_course` (formerly `median_heading`) is computed with `circ_median()`; the old value
   could be 180 degrees off when tied directions straddled zero.
-- `calculate_kinematics()` returns a plain anipoint: the `aniframe_kin` class is gone, so code
-  testing `inherits(x, "aniframe_kin")` now gets `FALSE`.
+- `add_kinematics()` (and the deprecated `calculate_kinematics()`) return a plain anipoint: the
+  `aniframe_kin` class is gone, so code testing `inherits(x, "aniframe_kin")` now gets `FALSE`.
+- Directions are signed, in `(-pi, pi]`: `wrap_angle()` defaults to `modulo = "pi"`, and
+  `circ_mean()` / `circ_median()`, and so summaries such as `median_course`, return that range
+  where they gave `[0, 2*pi)`. anispace's `map_to_polar()`, `map_to_cylindrical()` and
+  `map_to_spherical()` write `phi` in that range too. `wrap_angle(x, "2pi")` gives the old range.
+- `add_kinematics()` and `summarise_path()` drop the direction of steps shorter than `min_step`
+  (`"auto"` by default), so `course` has more `NA` and `total_turning` is lower than
+  `calculate_kinematics()` gave; `min_step = 0` restores it.
+- `summarise_path()`'s and `add_tortuosity()`'s `sinuosity` and `e_max` come from the path
+  rediscretised to a constant step length, so they differ from the deprecated functions'.
+- Subsetting a frame so that it loses a key, index or interval column (`select()`, `[`,
+  `distinct()`) returns a plain tibble, not a frame with metadata naming missing columns.
 - anispace's `rotate_coords()` and `transform_to_egocentric()` turn a declared orientation with
   the positions; it used to be left stale.
 
@@ -164,7 +195,8 @@ coordinates are needed. Each frame's metadata declares column roles as slots:
 Roles are detected from the recognised names, or set with
 `as_anipoint(variables_what=, variables_when=, variables_where=)`, and adjusted with
 `get_`/`set_`/`add_`/`remove_variables()`. A frame is **grouped by `get_keys()`**
-(`what$keys` + `when$keys`), and the dplyr methods **preserve the class + metadata**.
+(`what$keys` + `when$keys`), and the dplyr methods **preserve the class + metadata**, renames
+included, unless a subset drops a key or the index: that gives a plain tibble.
 
 Metadata is read and declared through `get_metadata()` / `set_metadata()`, with flat field
 names; never read `attr(x, "metadata")`. **`set_*` only declares.** Changing values uses
@@ -186,17 +218,22 @@ teams) relate the levels of a variable. Full detail in `reference/aniframe-model
   computes angles from a frame reads them with `angle_to_rad()` and writes them back with
   `angle_from_rad()`; `convert_unit_angle()` converts the frame and its metadata, declared
   orientation included.
-- **Sign of angles.** Signed angles run from `x` toward `y`. `get_angle_direction()` says
-  whether that is clockwise or counter-clockwise as viewed. aniread's image-plane readers
-  reflect `y` to point up, so their angles run counter-clockwise. To change convention, change
+- **Sign of angles.** Directions are written in `(-pi, pi]`, the range `atan2()` gives, and
+  signed angles run from `x` toward `y`. `get_angle_direction()` says whether that is
+  clockwise or counter-clockwise as viewed. aniread's image-plane readers reflect `y` to point
+  up, so their angles run counter-clockwise. To change convention, change
   the coordinates with `reflect_axis()`; the angles follow.
 - **Plot methods dispatch on the object**: `plot(anipoint)` → trajectory, `plot(anievent)` →
-  events. Check objects get `plot()`, `summary()` and `print()` methods from anicheck; its
+  events; `plot_circular()` draws an angle column (`course`, a declared `heading`) as a rose
+  diagram. Check objects get `plot()`, `summary()` and `print()` methods from anicheck; its
   `plot()` hands off to anivis, and prompts to install it if missing. The checks accept an
   anipoint only.
-- **Skeletons are read separately**: `aniread::read_structure()` (or `_deeplabcut()` /
-  `_sleap()`) gives an anistructure, attached with `anicore::set_structure()`. The frame readers
-  do not attach one. `read_boris()` returns an anievent, not an anipoint.
+- **Skeletons are mostly read separately**: `aniread::read_structure()` (or `_deeplabcut()` /
+  `_sleap()`) gives an anistructure, attached with `anicore::set_structure()`. A frame reader
+  attaches one only when the data file carries it, which today means a SLEAP analysis `.h5`:
+  `read_sleap()` attaches it as the `keypoint` structure. DeepLabCut keeps its skeleton in the
+  project's `config.yaml`, so its frames still need `read_structure()`. `read_boris()` returns
+  an anievent, not an anipoint.
 - **Persisting**: `write_aniframe()` to parquet keeps the metadata; CSV and TSV lose it.
   `read_aniframe()` reads parquet only, and restores an anipoint or an anievent — not an
   anisegment or anijoint.
