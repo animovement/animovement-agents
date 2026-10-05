@@ -1,17 +1,17 @@
 <!--
-  Generated from .github/ISSUE_TEMPLATE/{bug_report,feature_request}.yml in animovement/.github — do not edit here.
+  Generated from .github/ISSUE_TEMPLATE/{bug_report,feature_request,task}.yml in animovement/.github — do not edit here.
   Edit it there; the Sync agent docs workflow opens a pull request with the change.
 
-  Source: https://github.com/animovement/.github/blob/main/.github/ISSUE_TEMPLATE/{bug_report,feature_request}.yml
-  Commit: 37da74bf2231c0dceed8ce1af6988763c0065f82
-  Synced: 2026-08-25
+  Source: https://github.com/animovement/.github/blob/main/.github/ISSUE_TEMPLATE/{bug_report,feature_request,task}.yml
+  Commit: 30b45d30469414cc433bdf9261654f4872f03209
+  Synced: 2026-10-05
 
   This copy can lag its source. If a detail matters, check the URL above.
 -->
 
 # Issue templates, as markdown
 
-The bug and feature templates are **GitHub issue forms**. They apply only in the web
+The issue templates are **GitHub issue forms**. They apply only in the web
 UI — an issue opened with `gh issue create` or through the API gets none of their
 structure, and the YAML cannot be passed as a body. Reproduce the fields below by
 hand, and set the type explicitly with `--type`.
@@ -94,6 +94,43 @@ Body skeleton:
 ## What alternatives have you considered?
 
 <!-- optional -->
+
+## Anything else?
+
+<!-- optional -->
+
+````
+
+## Task
+
+`--type Task` · A defined piece of work: maintenance, CI, refactoring, follow-ups
+
+Fields, in order:
+
+- **What needs doing?** — required, textarea
+  The work itself, in a sentence or two.
+- **What prompted this?** — optional, textarea
+  Link the issue, pull request or conversation it came out of. A task with no trail behind it is the one nobody can judge later.
+- **Done when** — required, textarea
+  What has to be true to close this. A checklist is usually the clearest form.
+- **Anything else?** — optional, textarea
+  Which packages it touches, whether anything has to land first.
+
+Body skeleton:
+
+````markdown
+## What needs doing?
+
+<!-- required -->
+
+## What prompted this?
+
+<!-- optional -->
+
+## Done when
+
+- [ ]
+- [ ]
 
 ## Anything else?
 
