@@ -62,8 +62,9 @@ get_axes(x)                            # where$position, named by axis role
   (Bonsai's and Octron's blob orientation) is deliberately left undeclared:
   animovement/anicore#165.
 - **Orientation can be derived from points.** animetric's `add_orientation()` declares it from
-  two points (2D) or three (3D: the third fixes roll), attached to chosen members; the
-  quaternion comes from anispace's `quat_from_vectors()`.
+  two points (2D: a column called `heading` by default, in the `yaw` role) or three (3D: the
+  third fixes roll), attached to chosen members; the quaternion comes from anispace's
+  `quat_from_vectors()`.
 - **Direction of travel is not orientation.** It is derived from the path — animetric's
   `course` — and stays an ordinary column. animetric keeps the name `heading` for where the
   body faces.
@@ -83,13 +84,22 @@ positions (see *Converting between grains*). Check the reference page for defaul
 The frame is grouped by `get_keys()`: identity plus temporal context, never the index. Each
 trajectory is its own group, so operations stay within a track. The dplyr methods preserve
 the class and metadata. Regrouping is allowed but warns. Operations that derive a quantity
-from successive rows (speed, path length) need one trajectory per group.
+from successive rows (speed, distance travelled) need one trajectory per group.
+
+- **Renaming carries through.** `rename()`, `rename_with()`, renaming in `select()` or
+  `relocate()`, and `names<-` update the keys, the index, the declared variables and each
+  structure's `variable`.
+- **Subsetting away a key, the index or the interval gives a plain tibble.** `select()`, `[`,
+  `distinct()` and removing a column with `$<-` or `[[<-` return the columns asked for, without
+  metadata, rather than a frame naming columns it lacks. Dropping a declared value column (a
+  position, an orientation) keeps the frame, so it can be re-declared.
 
 ## Metadata
 
 Stored as a tree of categories: `recording`, `time`, `space`, `variables`, `structure`, and
 `spec_version` (aniframe 3.0.0 / anievent 1.0.0). **Access is flat.** `list_default_metadata()`
-shows every field.
+shows every field. Printed metadata lists one `name: value` line per field that is set, with
+units; `print(get_metadata(x), all = TRUE)` shows the rest.
 
 ```r
 get_metadata(x, "sampling_rate")      # a field, wherever it lives
@@ -122,13 +132,15 @@ set_metadata(x, sampling_rate = 30, unit_space = "mm")
       glass floor.
   - **Reference frame:** `reference_frame`, one of `"allocentric"`, `"egocentric"` or
     `"none"`.
-  - **Recording:** `source`, `source_version` (only a version the file states),
+  - **Recording:** `source`, `source_version` (only a version the file states, such as the
+    SLEAP version in an analysis `.h5`),
     `source_format` (the export layout a reader parsed) and `filename`, filled in by the
     readers.
-- **Angles a function derives** come back in `unit_angle`. A function that computes angles
-  reads a frame's with `angle_to_rad()` and writes results with `angle_from_rad()`;
-  `convert_unit_angle()` is the frame-level operation, which rescales the columns and the
-  declared unit together.
+- **Angles a function derives** come back in `unit_angle`, and directions are written in
+  `(-pi, pi]`, the range `atan2()` gives and `wrap_angle()`'s default. A function that
+  computes angles reads a frame's with `angle_to_rad()` and writes results with
+  `angle_from_rad()`; `convert_unit_angle()` is the frame-level operation, which rescales the
+  columns and the declared unit together.
 - An **anievent has no `space` category**; its spatial fields read `NULL`.
 
 ## Structures
@@ -155,7 +167,9 @@ and networks as much as skeletons (decided in animovement/anicore#164). Per-indi
 such as segment lengths are data, not structure. A full body model — reference pose, body
 frames, typed joints, markers — is deferred to animovement/anicore#162.
 
-Skeletons come from `aniread::read_structure()`; the frame readers never attach one.
+Skeletons come from `aniread::read_structure()`. A frame reader attaches one only when the
+data file carries it: `read_sleap()` does for a SLEAP analysis `.h5`, as the `keypoint`
+structure.
 
 ## Converting between grains
 
