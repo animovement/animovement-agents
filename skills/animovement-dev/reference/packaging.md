@@ -90,10 +90,12 @@ setting.
 YAML, whose canonical copy is `codecov/codecov.yml` in `animovement/.github`. Codecov does not
 read that file, so after changing it an org admin pastes it into the Global YAML setting on
 app.codecov.io. It sets project and patch status at `target: auto`, `threshold: 1%`,
-`informational: true` — reported, never blocking — and `comment: require_changes: true`, so
-Codecov comments only on pull requests that change coverage. Packages carry no `codecov.yml`;
-one would override the Global YAML key by key. Recent pull requests have landed with every
-changed line covered.
+`informational: true` — reported, never blocking — and
+`comment: require_changes: "coverage_drop OR uncovered_patch"`, so Codecov comments only when
+coverage drops or a pull request adds uncovered lines (`true` would comment on any pull request
+that adds code, covered or not). Packages carry no `codecov.yml`: Codecov does not merge one with
+the Global YAML, it replaces it outright, dropping the shared settings for that package. Recent
+pull requests have landed with every changed line covered.
 
 **The stubs.** The canonical copy of each lives in
 [`workflows/stubs/`](https://github.com/animovement/.github/tree/main/workflows/stubs) in
