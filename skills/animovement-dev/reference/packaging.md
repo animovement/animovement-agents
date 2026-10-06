@@ -86,9 +86,14 @@ configurations, `pkgdown / pkgdown`, `test-coverage / test-coverage` and
 required. The ruleset allows merge, squash and rebase; squashing is a convention, not a
 setting.
 
-**Codecov.** Each analysis package has a `codecov.yml` with project and patch status at
-`target: auto`, `threshold: 1%`, `informational: true` — reported, never blocking. The
-metapackage has none. Recent pull requests have landed with every changed line covered.
+**Codecov.** One configuration covers every package: Codecov's organisation-wide Global
+YAML, whose canonical copy is `codecov/codecov.yml` in `animovement/.github`. Codecov does not
+read that file, so after changing it an org admin pastes it into the Global YAML setting on
+app.codecov.io. It sets project and patch status at `target: auto`, `threshold: 1%`,
+`informational: true` — reported, never blocking — and `comment: require_changes: true`, so
+Codecov comments only on pull requests that change coverage. Packages carry no `codecov.yml`;
+one would override the Global YAML key by key. Recent pull requests have landed with every
+changed line covered.
 
 **The stubs.** The canonical copy of each lives in
 [`workflows/stubs/`](https://github.com/animovement/.github/tree/main/workflows/stubs) in
@@ -179,7 +184,6 @@ than starting fresh.
 - **`_pkgdown.yml`** — point it at `animovementtemplate`.
 - **Workflow stubs** — copy all six from `workflows/stubs/` in `animovement/.github`; the
   sync will not create them.
-- **`codecov.yml`** — copy it from a sibling.
 - **Branch protection** — a `Protect main` ruleset requiring the same seven checks.
 - **`agents/packages.tsv`** in `animovement/.github` — one line, name and role. It drives
   both **Sync AGENTS.md** and **Sync workflow stubs**.
