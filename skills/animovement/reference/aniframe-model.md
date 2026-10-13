@@ -1,5 +1,9 @@
 # The aniframe data model
 
+Read this when building a frame from a data frame, declaring or repairing column roles and
+metadata, combining or subsetting frames, or working with skeletons, segments, joints or events.
+It describes the development builds; anicore 0.8.0 and older are in `versions.md`.
+
 **aniframe** is the abstract parent class of every animovement frame. Each concrete class is
 a `tibble` subclass (usually a `grouped_df`) whose rows sit at one **grain**, and which
 carries **metadata** describing its columns. The package that defines them is **anicore**.
@@ -7,9 +11,9 @@ carries **metadata** describing its columns. The package that defines them is **
 | Class | One row per | Value columns | Made by |
 |---|---|---|---|
 | `anipoint` | point × time | coordinates, by axis role (`x`, `y`, `z`, or `rho`, `phi`, `theta`), optional orientation | `anipoint()`, `as_anipoint()`, readers |
-| `anisegment` | segment × time | `length`, unit direction `ux`, `uy` (`uz`) | `as_anisegment()` |
-| `anijoint` | joint × time | `angle`, in the frame's `unit_angle` | `as_anijoint()` |
-| `anievent` | event (bout or instant) | `channel`, `type`, `label`, `start`, `stop` | `anievent()`, `as_anievent()`, `to_anievent()` |
+| `anisegment` (experimental) | segment × time | `length`, unit direction `ux`, `uy` (`uz`) | `as_anisegment()` |
+| `anijoint` (experimental) | joint × time | `angle`, in the frame's `unit_angle` | `as_anijoint()` |
+| `anievent` | event (bout or instant) | `channel`, `type`, `label`, `start`, `stop` | `anievent()`, `as_anievent()`, `to_anievent()`, `read_boris()` |
 
 Class vectors are `c("anipoint", "aniframe", ...)` and so on. `is_aniframe()` is TRUE for
 **any** of them, including an anievent. Code that needs coordinates must test the grain,
@@ -83,8 +87,10 @@ positions (see *Converting between grains*). Check the reference page for defaul
 
 The frame is grouped by `get_keys()`: identity plus temporal context, never the index. Each
 trajectory is its own group, so operations stay within a track. The dplyr methods preserve
-the class and metadata. Regrouping is allowed but warns. Operations that derive a quantity
-from successive rows (speed, distance travelled) need one trajectory per group.
+the class and metadata. `ungroup()` warns; `group_by()` to another grouping does not, but
+operations that derive a quantity from successive rows (speed, distance travelled, path
+summaries) then refuse a group holding several trajectories. To summarise more coarsely,
+summarise at the declared grouping first, then combine the results.
 
 - **Renaming carries through.** `rename()`, `rename_with()`, renaming in `select()` or
   `relocate()`, and `names<-` update the keys, the index, the declared variables and each
@@ -93,6 +99,10 @@ from successive rows (speed, distance travelled) need one trajectory per group.
   `distinct()` and removing a column with `$<-` or `[[<-` return the columns asked for, without
   metadata, rather than a frame naming columns it lacks. Dropping a declared value column (a
   position, an orientation) keeps the frame, so it can be re-declared.
+- **Combining loses the metadata.** `dplyr::bind_rows()` and joins return a plain tibble.
+  `as_anipoint()` makes it a frame again, but with default metadata (`frame`, `px`, no rate)
+  unless you pass the fields: `as_anipoint(x, variables_when = "trial", metadata =
+  list(sampling_rate = 30, unit_time = "s"))`.
 
 ## Metadata
 
@@ -118,8 +128,11 @@ set_metadata(x, sampling_rate = 30, unit_space = "mm")
     `convert_unit_angle()`. Converting from `px`, `frame` or `unknown` needs a
     `calibration_factor`; converting from `frame` can use a declared `sampling_rate`
     instead.
-  - **Sampling:** `sampling_rate` is declared. `get_sampling_interval()` measures the index,
-    and `is_sampling_regular()` is computed on demand. Also `start_datetime`.
+  - **Sampling:** `sampling_rate` is declared: the rate of the data as it is now.
+    `source_sampling_rate` (in `recording`) is the rate the device recorded at; the first
+    rate declared fills both, and resampling changes only `sampling_rate`.
+    `get_sampling_interval()` measures the index, and `is_sampling_regular()` is computed on
+    demand. Also `start_datetime`.
   - **Orientation of the axes:**
     - `axis_directions` holds one of `right`/`left`/`up`/`down`/`back`/`forward` per role,
       set with `set_axis_directions()`, which only declares.
@@ -145,6 +158,9 @@ set_metadata(x, sampling_rate = 30, unit_space = "mm")
 
 ## Structures
 
+The structure family is experimental: `anistructure()`, `set_structure()`, `as_anisegment()`,
+`as_anijoint()` and the classes they return may change without a deprecation cycle.
+
 An `anistructure()` records how the levels of one variable relate. It has **points**,
 directed **segments** (`from` → `to`, optional expected `length`) and **joints** — one
 measured angle each, between an ordered pair of segments `a` and `b`, with an optional `axis`
@@ -167,9 +183,9 @@ and networks as much as skeletons (decided in animovement/anicore#164). Per-indi
 such as segment lengths are data, not structure. A full body model — reference pose, body
 frames, typed joints, markers — is deferred to animovement/anicore#162.
 
-Skeletons come from `aniread::read_structure()`. A frame reader attaches one only when the
-data file carries it: `read_sleap()` does for a SLEAP analysis `.h5`, as the `keypoint`
-structure.
+Skeletons come from `aniread::read_structure()` (a DeepLabCut `config.yaml`, a SLEAP `.slp`
+or analysis `.h5`). A frame reader attaches one only when the data file carries it:
+`read_sleap()` does for a SLEAP analysis `.h5`, as the `keypoint` structure.
 
 ## Converting between grains
 
@@ -198,7 +214,8 @@ in anivis.
 
 ## Persisting
 
-`aniread::write_aniframe()` writes parquet (via arrow), CSV or TSV; only parquet keeps the
-metadata, and the others warn. `read_aniframe()` reads parquet only, and restores an anipoint
-or an anievent — not an anisegment or anijoint. Metadata is R-serialised, so non-R readers
-cannot parse it.
+`aniread::write_dataset()` (or `write_aniframe()`) writes Parquet (via arrow), CSV or TSV; only
+Parquet keeps the metadata, and the others warn. `read_dataset()` or `read_aniframe()` on the
+Parquet file restores the class it was written with, anisegment and anijoint included. (Files
+written before that was recorded come back as an anipoint or an anievent.) The class is stored
+as JSON that any language can read; the rest of the metadata is R-serialised.
