@@ -6,8 +6,9 @@ Two skills, for the two audiences:
 
 - **`animovement`** — for *using* the stack. A durable map of which package owns what
   (`anicore`, `aniread`, `aniprocess`, `animetric`, `anivis`, `anicheck`, `anispace`), the
-  aniframe data model, the naming traps, and the conventions — so an agent can locate
-  functions and **verify their signatures against the generated docs** rather than guessing.
+  aniframe data model, readers, units and the cleaning pipeline, the renames since the last
+  releases, and the naming traps — so an agent can locate functions and **verify their
+  signatures against the generated docs** rather than guessing.
 - **`animovement-dev`** — for working *on* the packages. Commit and pull request
   conventions, releases and `NEWS.md`, and the packaging decisions recorded nowhere else:
   why the metapackage is GPL-3 while the rest are MIT, the README setting that silently
@@ -61,10 +62,13 @@ plugin.json                    # Open Plugins manifest (goose, agentskills.io)
   marketplace.json             # Claude Code marketplace, source "./"
 skills/
   animovement/                 # using the stack
-    SKILL.md                   # package map, pipeline, naming traps, conventions
+    SKILL.md                   # rules, package map, pipeline, troubleshooting
     reference/
       packages.md              # key exported functions per package
+      readers.md               # which reader for which tool, and what it records
+      workflows.md             # units, cleaning choices, recipes
       aniframe-model.md        # the aniframe data contract in detail
+      versions.md              # releases vs development builds, old names to new
   animovement-dev/             # working on the packages
     SKILL.md                   # invariants, dev loop, commit conventions, releases
     reference/
@@ -74,6 +78,7 @@ skills/
       release-checklist.md     # │ Sync agent docs workflow — never edit here
       pull-request-template.md # │
       issue-templates.md       # ┘ (issue forms rendered as markdown)
+evals/                         # claude plugin eval suites, one per skill
 AGENTS.md                      # portable entry point for this repository
 scripts/check.sh               # validate the manifests, their agreement, and the version bump
 ```
@@ -95,6 +100,19 @@ Each of the eight package repositories also carries an `AGENTS.md` pointing back
 are generated from `agents/AGENTS.md.tmpl` in
 [animovement/.github](https://github.com/animovement/.github) and rolled out by its **Sync
 AGENTS.md** workflow — not maintained in this repository.
+
+## Evals
+
+Each skill has an eval suite under [`evals/`](evals/), run with `claude plugin eval` from the
+repository root:
+
+```sh
+claude plugin eval . --scaffold --runs 1 --ablation none -j 4 --no-publish
+```
+
+Runs are real model calls on your own Claude login and plan. Drop `--runs 1 --ablation none`
+for the full comparison with and without the plugin. [`evals/README.md`](evals/README.md) covers
+the options and what each suite's cases check.
 
 ## Contributing
 
