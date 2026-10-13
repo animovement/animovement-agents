@@ -1,103 +1,140 @@
-# animovement packages — key exports
+# animovement packages: key exports
 
-One-line purpose + the exports you'll reach for most. This is a **map, not the full API** —
-it is deliberately incomplete and can lag the packages. Confirm against the generated docs
-at `https://animovement.dev/<pkg>/llms.txt` (or, if the source is checked out locally, that
-package's `R/`, `NAMESPACE` and `NEWS.md`). Where this file and the generated docs disagree,
-the generated docs are right.
+Read this when looking for the function that does something, or the package that owns a name.
+It is a **map, not the API**: deliberately incomplete, and it can lag the packages. Confirm each
+name and signature at `https://animovement.dev/<package>/llms.txt` (or, with the source checked
+out, that package's `NAMESPACE`, `R/` and `NEWS.md`); where they disagree with this file, they are
+right. Names here are those of the development builds; `versions.md` maps older ones.
 
-## animovement — the metapackage
+## animovement: the metapackage
 
-`library(animovement)` attaches the seven packages below and resolves versions and
-conflicts. It owns no analysis functions; everything else on this page comes from one of
-those seven.
+`library(animovement)` attaches the seven packages below and reports conflicts. It exports no
+analysis functions, so `animovement::read_dataset()` fails: call through the owning package.
 
-- **Suite management:** `animovement_install()`, `animovement_update()`,
-  `animovement_sitrep()`, `animovement_conflicts()`, `animovement_packages()`,
-  `animovement_deps()`, `animovement_repos()`, `animovement_extend()`,
-  `animovement_detach()`; `animovement_show_suggested()` / `animovement_install_suggested()`
-  for the soft dependencies
+- **Suite management:** `animovement_sitrep()` (versions, and whether any are behind),
+  `animovement_update()` (prints the install command; `install = TRUE` runs it),
+  `animovement_install()`, `animovement_packages()`, `animovement_deps()`,
+  `animovement_repos()` (R-universe added to `getOption("repos")`), `animovement_conflicts()`,
+  `animovement_extend()`, `animovement_detach()`
+- **Optional dependencies:** `animovement_show_suggested()`, `animovement_install_suggested()`
+  (rhdf5 from Bioconductor for `.h5`, arrow for Parquet, signal for some filters, …)
 
-## anicore — core data structures for movement data
+## anicore: classes, metadata, units, angles
 
-`aniframe` is the parent class; the frames are `anipoint`, `anisegment`, `anijoint` and `anievent`. `set_*` only declares; value-changing operations have their own verbs.
+`aniframe` is the parent class; the frames are `anipoint` (positions), `anisegment`,
+`anijoint` and `anievent`. `set_*` only declares; changing values has its own verbs.
 
-- **Construct / coerce:** `anipoint()`, `as_anipoint()`, `example_anipoint()`, `validate_anipoint()`, `is_anipoint()`, `ensure_is_anipoint()`; `is_aniframe()` / `ensure_is_aniframe()` test for any frame (the old `aniframe()` constructors are soft-deprecated aliases). Subsetting away a key, the index or the interval gives a plain tibble; renaming carries the new names into the metadata
-- **Column roles:** `get_variables()`, `set_variables()`, `add_variables()`, `remove_variables()` (role and slot arguments), `get_keys()` (the grouping set)
-- **Index:** `get_index()` / `set_index()`: the single column the frame is indexed by; never a key
-- **Axis roles:** `get_axes()` (which column carries which axis role, so coordinates may be named anything; declare with `set_variables(where = )`), `get_coordinate_system()`
-- **Axis directions:** `get_axis_directions()` / `set_axis_directions()` (declares only), `reflect_axis()` (turns an axis over and reflects the data, orientation included), `get_handedness()`, `get_angle_direction()`
-- **Entity orientation:** declared in `where$orientation` with `set_variables()` — `yaw` (2D) or a unit quaternion `qw`/`qx`/`qy`/`qz` (3D); the Euler convention a source used goes in `euler_sequence` / `euler_intrinsic` metadata
-- **Metadata:** `get_metadata()`, `set_metadata()`, `list_default_metadata()`; flat access over a tree of categories. Units, sampling rate, extents and handedness are declared here. Prints one `name: value` line per field that is set; `print(get_metadata(x), all = TRUE)` shows every field
-- **Unit conversion:** `convert_unit_space()`, `convert_unit_time()`, `convert_unit_angle()`
-- **Sampling:** `get_sampling_interval()`, `is_sampling_regular()` (the rate is `get_metadata(x, "sampling_rate")`)
-- **Structures:** `anistructure()`, `example_structure()`, `validate_anistructure()`, `is_anistructure()`, and `set_structure()` / `get_structure()` / `remove_structure()` (several named structures per frame)
-- **Segments and joints:** `as_anisegment()`, `as_anijoint()`, `is_anisegment()`, `is_anijoint()`; `as_anipoint(seg, root = )` rebuilds positions
-- **Coordinate-system predicates:** `is_cartesian[_1d/_2d/_3d]()`, `is_polar()`, `is_cylindrical()`, `is_spherical()`, `is_spatial()`, and an `ensure_is_*()` for each
-- **Events:** `anievent()`, `as_anievent()`, `to_anievent()`, `is_anievent()`, `ensure_is_anievent()`, `validate_anievent()`
-- **Angles** (all of the suite's angle utilities): `deg_to_rad()`, `rad_to_deg()`, `angle_to_rad()` / `angle_from_rad()` (values ↔ a frame's `unit_angle`), `wrap_angle()` (to `(-pi, pi]` by default; `"2pi"` for `[0, 2*pi)`), `unwrap_angle()`, `angle_between()` (radians)
-- **Circular statistics** (radians): `circ_mean()`, `circ_median()` (both signed, in `(-pi, pi]`), `circ_sd()`, `circ_mad()`, `circ_difference()`, `circ_successive_difference()`
+- **Construct and test:** `anipoint()`, `as_anipoint()`, `example_anipoint()`,
+  `validate_anipoint()`, `is_anipoint()`, `ensure_is_anipoint()`; `is_aniframe()` is true for
+  any frame. The `aniframe()` constructors are soft-deprecated aliases
+- **Column roles:** `get_variables()`, `set_variables()`, `add_variables()`,
+  `remove_variables()` (role, then slot); `get_keys()` (the grouping columns); `get_index()`,
+  `set_index()`; `get_axes()` (which column carries which axis role)
+- **Metadata:** `get_metadata()`, `set_metadata()`, `list_default_metadata()`; flat field names
+  over categories. `print(get_metadata(x), all = TRUE)` shows unset fields too
+- **Units:** `convert_unit_space()`, `convert_unit_time()`, `convert_unit_angle()`
+- **Sampling:** `get_sampling_interval()`, `is_sampling_regular()`; the rate is
+  `get_metadata(x, "sampling_rate")`, the device's own `source_sampling_rate`
+- **Axes:** `get_axis_directions()`, `set_axis_directions()` (declares), `reflect_axis()`
+  (turns an axis and its data over), `get_handedness()`, `get_angle_direction()`,
+  `get_coordinate_system()`, `is_cartesian_2d()` and the other `is_*()` / `ensure_is_*()`
+- **Structures (skeletons):** `anistructure()`, `example_structure()`, `set_structure()`,
+  `get_structure()`, `remove_structure()`; `as_anisegment()`, `as_anijoint()` (experimental)
+- **Events:** `anievent()`, `as_anievent()`, `to_anievent()` (per-frame labels to bouts),
+  `is_anievent()`, `validate_anievent()`
+- **Angles:** `deg_to_rad()`, `rad_to_deg()`, `angle_to_rad()` / `angle_from_rad()` (values
+  and a frame's `unit_angle`), `wrap_angle()` (to `(-pi, pi]`; `"2pi"` for `[0, 2*pi)`),
+  `unwrap_angle()`, `angle_between()`
+- **Circular statistics** (radians): `circ_mean()`, `circ_median()`, `circ_sd()`,
+  `circ_mad()`, `circ_difference()`, `circ_successive_difference()`
 - **Cleaning values:** `convert_nan_to_na()`, `convert_inf_to_na()`
 
-## aniread — reading & writing movement data
+## aniread: reading and writing
 
-Readers return an anipoint, except `read_boris()`, which returns an anievent. Image-plane
-readers turn `y` to point up.
+- **Entry points:** `read_dataset()` (detects the tool), `write_dataset()` (format from the
+  suffix; `by =` for one file per group), `detect_source()`, `get_supported_sources()`
+- **Pose and tracking readers:** `read_deeplabcut()`, `read_sleap()`, `read_lightningpose()`,
+  `read_idtracker()`, `read_trex()`, `read_movement()`, `read_anipose()`, `read_freemocap()`,
+  `read_c3d()`, `read_trackmate()`, `read_bonsai()`, `read_animalta()`, `read_fasttrack()`,
+  `read_octron()`, `read_fictrac()`, `read_trackball()`, `read_custom()`
+- **Events:** `read_boris()` returns an anievent
+- **Skeletons:** `read_structure()`, `read_structure_deeplabcut()`, `read_structure_sleap()`
+  (experimental); attach with `anicore::set_structure()`
+- **Saved frames:** `write_aniframe()` / `read_aniframe()` (Parquet keeps class and metadata;
+  CSV doesn't), `write_intracktive()`
+- **Utilities:** `get_sample_data()` (an example file per source), `calibrate_trackball()`
 
-- **Entry point:** `read_dataset()` detects the source (or takes `source =`) and calls its reader, returning whatever that reader does; reader-specific arguments pass through `...`. Call a specific reader when the source is known
-- **Read (pose/tracking):** `read_sleap()`, `read_deeplabcut()`, `read_lightningpose()`, `read_anipose()`, `read_trex()`, `read_idtracker()`, `read_octron()`, `read_trackmate()`, `read_fasttrack()`, `read_movement()`, `read_bonsai()`, `read_animalta()`, `read_freemocap()`, `read_c3d()`
-- **Read (other):** `read_fictrac()`, `read_trackball()`, `read_boris()`, `read_custom()`
-- **SLEAP:** `read_sleap()` reads the analysis `.h5` or CSV; from an `.h5` it also attaches the skeleton as the `keypoint` structure and records the SLEAP version as `source_version`
-- **Orientation:** `read_fictrac()` and `read_trex()` declare a `yaw`; Bonsai's and Octron's blob angles are axial (no front), so they stay undeclared columns (animovement/anicore#165)
-- **Skeletons:** `read_structure()` (detects the tool), `read_structure_deeplabcut()`, `read_structure_sleap()` — each returns an anistructure, attached with `anicore::set_structure()`; apart from a SLEAP `.h5`, the frame readers do not attach one
-- **Round-trip:** `write_aniframe()` (parquet keeps metadata; CSV/TSV lose it) / `read_aniframe()` (parquet only; restores an anipoint or an anievent); also `write_intracktive()`
-- **Utilities:** `get_supported_sources()`, `detect_source()`, `get_sample_data()`, `calibrate_trackball()`, `validate_trackball()`
+Per-tool notes: `readers.md`.
 
-## aniprocess — signal processing & filtering
+## anicheck: data-quality reports
 
-`filter_*` here means **signal filtering**, never row subsetting, and `mask_na_*` sets bad values to `NA`, keeping the rows (they were `filter_na_*` until 0.5.0; the old names are deprecated). Two tiers:
+`check_confidence()`, `check_na_gapsize()`, `check_na_timing()`, `check_segment_length()`
+(needs a skeleton; experimental). Each takes an anipoint and returns a check object with
+`print()`, `summary()` and `plot()` methods; `plot()` uses anivis.
 
-- **Whole frame** (experimental): `mask_na_across()`, `replace_na_across()`, `filter_across()` — take an aniframe and a method name, act on the declared position columns within the frame's grouping, and read the index, `sampling_rate` and `confidence` from the frame
-- **Column level** — take a vector or a `pick()`ed data frame, inside `mutate()`; `mask_na_with()`, `replace_na_with()` and `filter_with()` choose the method by name:
-  - **NA masking:** `mask_na_confidence()` (`missing = "keep"` leaves rows with no score unmasked, `"mask"` masks them), `mask_na_excursion()`, `mask_na_hampel()`, `mask_na_speed()`, `mask_na_range()`, `mask_na_roi()`, and, outside both tiers, `mask_na_segment_length()`, which takes a whole anipoint with a structure attached
-  - **Gap filling:** `replace_na_linear()`, `replace_na_spline()`, `replace_na_stine()`, `replace_na_locf()`, `replace_na_value()`
-  - **Smoothing / filtering:** `filter_sgolay()`, `filter_gaussian()`, `filter_triangular()`, `filter_rollmean()`, `filter_rollmedian()` (both centred by default), `filter_lowpass[_fft]()`, `filter_highpass[_fft]()`, `filter_kalman[_irregular]()`, `filter_ccma()`, `filter_one_euro()`
+## aniprocess: masking, filling, smoothing
+
+`filter_` is signal filtering, never row subsetting; `mask_na_` sets values to `NA` and keeps
+rows. Two tiers:
+
+- **Whole frame** (experimental): `mask_na_across()`, `replace_na_across()`, `filter_across()`.
+  Each takes a method name, works on the declared position columns within the frame's groups,
+  and reads the index, `sampling_rate` and `confidence` from the frame
+- **Vectors**, inside `mutate()`; `mask_na_with()`, `replace_na_with()`, `filter_with()` take
+  the method by name:
+  - **Masking:** `mask_na_confidence()`, `mask_na_roi()`, `mask_na_range()`,
+    `mask_na_speed()`, `mask_na_excursion()`, `mask_na_hampel()`; and
+    `mask_na_segment_length()`, which takes a whole anipoint with a skeleton
+  - **Filling:** `replace_na_linear()`, `replace_na_spline()`, `replace_na_stine()`,
+    `replace_na_locf()`, `replace_na_value()`
+  - **Smoothing:** `filter_sgolay()`, `filter_gaussian()`, `filter_triangular()`,
+    `filter_rollmean()`, `filter_rollmedian()`, `filter_lowpass()`, `filter_highpass()` (and
+    `_fft`), `filter_kalman()` (and `_irregular`), `filter_one_euro()`, `filter_ccma()`,
+    `filter_deadband()` (holds a still point still)
 - **Peaks:** `find_peaks()`, `find_troughs()`
 
-## animetric — movement-based metrics
+## animetric: metrics
 
 `add_*()` returns the frame with something added, `compute_*()` are primitives (mostly on
 vectors), `summarise_*()` gives one row per group.
 
-- **Kinematics:** `add_kinematics()` — velocity and acceleration components named by axis role (`v_x`, …), `speed`, `acceleration` (signed, along the path), `cumulative_distance`, and the path-direction measures (`course`, `turning_rate`, `cumulative_turning`, …; which dimensions get them is on its reference page); angles in the frame's `unit_angle`; in 3D, `vertical =` names the world's up axis for course and elevation; steps shorter than `min_step` (`"auto"`) have no course. Also `differentiate()`, `compute_gradient()`
-- **Path complexity:** `add_tortuosity()` adds windowed `straightness_<w>`, `sinuosity_<w>` and `e_max_<w>` only (sinuosity and `e_max` from the path rediscretised to a constant step); primitives `compute_sinuosity()`, `compute_straightness()`, `compute_emax()`
-- **Spatial relations:** `add_nnd()` (needs `across`; columns `nnd_<n>_<across>`, `nnd_<n>_distance`) / `compute_nnd()` (nearest-neighbour distance). `calculate_nnd()` is deprecated
-- **Derived points:** `add_point()` appends a new member of an identity level at each moment — `method = "centroid"` (default), `"median"`, `"weighted"` (by `confidence`) or a function — and derives its orientation too; `compute_point()` returns it alone. Both take `across` to say which level collapses, required once the frame declares more than one
-- **Orientation from points:** `add_orientation(data, from, to, plane, perpendicular, attach_to, level)` declares `heading` (2D, as the `yaw` role) or a quaternion (3D, where `plane` — any third point off the `from`–`to` line — fixes roll); `perpendicular = TRUE` for an axis across the body (eye to eye); `attach_to` puts it on chosen members
-- **Summaries:** `summarise_aniframe()` (distribution of per-row measures; methods for anipoint, anisegment, anijoint; `cols =`, `measures =`) and `summarise_path()` (whole-trajectory `total_distance`, `total_turning`, `net_displacement`, `straightness`, `sinuosity`, `e_max`), each with a `summarize_*` alias
-- **Deprecated** (still run, with their old output): `calculate_kinematics()` and `calculate_tortuosity()` (now `add_*()`), `summarise_kinematics()` and `summarise_tortuosity()`, `add_centroid()` and `compute_centroid()`, `is_aniframe_kin()`
-- Circular statistics are anicore's `circ_*()`; `mean_angle()` and `median_angle()` are removed
+- **Kinematics:** `add_kinematics()` (velocity, `speed`, `acceleration`,
+  `cumulative_distance`, `course`, turning measures; `vertical =` in 3D, `min_step =`);
+  `compute_min_step()`; `differentiate()`, `compute_gradient()`
+- **Path shape:** `add_tortuosity()` (windowed `straightness_<w>`, `sinuosity_<w>`,
+  `e_max_<w>`); `compute_straightness()`, `compute_sinuosity()`, `compute_emax()`
+- **Neighbours:** `add_nnd()` (needs `across`), `compute_nnd()`
+- **Derived points:** `add_point()` (`across`, `method = "centroid"`, `"median"`,
+  `"weighted"` or a function), `compute_point()`
+- **Orientation:** `add_orientation()` (`from`, `to`; `plane` in 3D; `perpendicular`,
+  `attach_to`, `level`) declares `heading` or a quaternion
+- **Summaries:** `summarise_aniframe()` (distribution of per-row measures; methods for anipoints,
+  anisegments, anijoints) and `summarise_path()` (whole-trajectory geometry), with
+  `summarize_*()` aliases
+- **Deprecated:** `calculate_kinematics()`, `calculate_tortuosity()`, `calculate_nnd()`,
+  `summarise_kinematics()`, `summarise_tortuosity()`, `add_centroid()`, `compute_centroid()`,
+  `is_aniframe_kin()`
 
-## anivis — visualisation
+## anivis: plots
 
-- **Plots:** `plot_trajectory()`, `plot_timeseries()`, `plot_events()`, and the `plot()` methods for anipoints and anievents; `plots()` arranges several side by side
-- **Angle distributions:** `plot_circular()` (experimental): a rose diagram of an angle column per trajectory group, read in the frame's `unit_angle` and turning the way `get_angle_direction()` says, with each group's circular mean marked
-- **Check plots:** the drawing behind `plot()` on anicheck objects; `as_plot_data()` gives the data a check plot draws
-- **Themes:** `theme_animovement[_light/_dark]()`, `theme_imputets()`
-- **Palettes + scales:** `palette_animovement()`, `palette_material()`, `palette_okabeito()`; the underlying vectors `material_colors()`, `okabeito_colors()`, `oi_colors()`; `scale_[colour|color|fill]_material[_c/_d]()`, `scale_*_okabeito()`, `scale_*_oi()`
-- **Event geoms:** `geom_event_point()`, `geom_event_state()`
+- **Plots:** `plot()` methods for anipoints and anievents, `plot_trajectory()`,
+  `plot_timeseries()`, `plot_events()`, `plot_circular()` (experimental rose diagram), `plots()`
+  (side by side)
+- **Check plots:** the drawing behind `plot()` on anicheck objects; `as_plot_data()` gives
+  their data
+- **Look:** `theme_animovement()` (`_light`, `_dark`), `palette_animovement()`,
+  `palette_okabeito()`, `palette_material()`, `scale_colour_okabeito()` and the other
+  `scale_[colour|color|fill]_*()`; `geom_event_point()`, `geom_event_state()`
 
-## anicheck — data-quality diagnostics
+## anispace: coordinates and orientation
 
-- `check_confidence()`, `check_na_timing()`, `check_na_gapsize()`, and `check_segment_length()` (experimental; how far each segment of an attached structure strays from its usual length) — take an anipoint and return check objects, not frames. anicheck registers their `plot()`, `summary()` and `print()` methods; `plot()` hands off to anivis, and prompts to install it if missing.
-
-## anispace — spatial transformations and quaternions
-
-- **System maps:** `map_to_cartesian()`, `map_to_polar()`, `map_to_cylindrical()`, `map_to_spherical()` — read the declared axes, and `phi` / `theta` in the frame's `unit_angle`. `phi` is signed, in (-pi, pi] (or (-180, 180] in degrees), like every other direction
-- **Rigid transforms:** `translate_coords()`, `rotate_coords()`, `transform_to_egocentric()` — the reference point is a member of an identity `level`, named with `to`, `align`, `about`, or an offset `by`
-- **Component converters** (radians): `cartesian_to_rho/phi/theta()`, `polar_to_x/y()`, `spherical_to_z()`
-- **Quaternions** (3D orientation): `quat_multiply()`, `quat_conjugate()`, `quat_normalise()`, `quat_rotate()`, `quat_distance()`; `quat_from_/quat_to_axis_angle()`, `_matrix()`, `_euler()`; `quat_slerp()`, `quat_mean()`, `quat_continuous()`, `quat_angular_velocity()`
-- **Quaternions from axes:** `quat_from_vectors(primary, secondary, axes)` — the orientation whose body axis `axes[1]` points along `primary` and whose `axes[2]` points towards `secondary` (only its part perpendicular to `primary` counts); the primitive behind animetric's `add_orientation()`
-- **Orientation in transforms:** `rotate_coords()` / `transform_to_egocentric()` turn a declared orientation with the positions; `transform_to_egocentric(align = "orientation")` aligns each subject by its own declared orientation
-- **Orientation on a frame:** `transform_euler_to_quaternion()` declares a quaternion orientation from exported Euler angles and records their convention; `transform_quaternion_to_euler()` gives them back
-- No angle utilities live here any more: `wrap_angle()`, `circ_difference()` and the rest are in **anicore**.
+- **Coordinate systems:** `map_to_cartesian()`, `map_to_polar()`, `map_to_cylindrical()`,
+  `map_to_spherical()`; component converters `cartesian_to_rho()`, `cartesian_to_phi()`,
+  `polar_to_x()`, … (radians)
+- **Rigid transforms:** `translate_coords()`, `rotate_coords()`, `transform_to_egocentric()`;
+  the reference is a member of an identity `level`, named by `to`, `align`, `about` or an
+  offset `by`
+- **Quaternions** (3D orientation): `quat_multiply()`, `quat_rotate()`, `quat_from_euler()`,
+  `quat_to_euler()`, `quat_from_vectors()`, `quat_slerp()`, `quat_mean()`, … ;
+  `transform_euler_to_quaternion()` declares an orientation from exported Euler angles
+- No angle utilities live here any more: they are anicore's
