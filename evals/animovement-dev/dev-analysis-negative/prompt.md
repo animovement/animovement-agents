@@ -2,9 +2,9 @@
 description: A near miss. An analysis question about the animovement packages, where the maintainer skill must not load; the user skill should.
 expected_outcome: >-
   Answers with R code that reads the SLEAP file with aniread and computes each
-  mouse's speed with the animovement packages, using the animovement skill.
-  animovement-dev is never invoked, and nothing about NEWS.md, pull requests,
-  releases or CI comes up.
+  mouse's speed with the animovement packages. Nothing about NEWS.md, pull
+  requests, releases or CI comes up. (Which skills load is checked by the
+  tool_used graders, not from the answer.)
 tags: [dev, negative]
 max_turns: 25
 allowed_tools: [Read, Glob, Grep, Skill]
