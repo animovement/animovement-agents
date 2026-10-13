@@ -20,7 +20,8 @@ one release process, kept in [animovement/.github](https://github.com/animovemen
 anicore is at the bottom: aniread, aniprocess and anispace import it, animetric also imports
 anispace, anivis suggests animetric and anicheck, anicheck suggests anivis, and the
 animovement metapackage imports all seven. `anievent`, `anisegment` and `anijoint` are
-classes in anicore; the `anievent` and `animodel` repositories are empty.
+classes in anicore. The `anievent` repository is for a planned package (behaviour and action
+segmentation, changepoint detection), still empty, and `animodel` is empty too.
 
 ## Where the rules are written
 
