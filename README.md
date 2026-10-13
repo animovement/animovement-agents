@@ -70,9 +70,11 @@ skills/
       aniframe-model.md        # the aniframe data contract in detail
       versions.md              # releases vs development builds, old names to new
   animovement-dev/             # working on the packages
-    SKILL.md                   # invariants, dev loop, commit conventions, releases
+    SKILL.md                   # rules, procedures, releases
     reference/
       packaging.md             # licensing, README, CI, distribution
+      checks.md                # a check failing, locally or on CI
+      github-api.md            # issues, PRs and commits through gh or the API
       contributing.md          # ┐
       ai-policy.md             # │ generated from animovement/.github by its
       release-checklist.md     # │ Sync agent docs workflow — never edit here
