@@ -1,270 +1,180 @@
 ---
 name: animovement
 description: >-
-  Use when reading, cleaning, analysing, or plotting animal movement / pose
-  tracking data with the animovement R stack (anicore, aniread, aniprocess,
-  animetric, anivis, anicheck, anispace). Explains which package owns what, the
-  aniframe data model, and the naming conventions, so functions can be located
-  and their signatures verified rather than guessed.
+  Use when analysing animal movement or pose-tracking data in R with the
+  animovement packages (animovement, anicore, aniread, aniprocess, anicheck,
+  animetric, anivis, anispace): reading output from DeepLabCut, SLEAP,
+  LightningPose, idtracker.ai, TRex, Anipose, FreeMoCap, TrackMate, Bonsai,
+  FicTrac, BORIS, C3D or the movement Python package; anipoints and other
+  aniframes; masking low-confidence points, filling gaps and smoothing tracks;
+  speed, distance, turning and path summaries in real units; trajectory plots;
+  or fixing code that calls read_dataset(), mask_na_*(), add_kinematics() or
+  other ani* functions, including old names that no longer run. Not for work on
+  the packages themselves (CI, releases, NEWS, pull requests: use
+  animovement-dev), nor for R data with no tracking in it.
 ---
 
 # animovement
 
-animovement is a modular R stack for animal movement & pose data, built around one
-shared data structure — the **aniframe**. Each package owns one stage of the
-pipeline. When a task involves any `ani*` package, use this map to decide *where*
-a function lives, then **verify its signature against the generated docs** before
-calling it (see *Verifying against source*).
+A suite of R packages for animal movement and pose data. Each package owns one stage (read,
+check, clean, measure, plot), and all pass one structure along: the **anipoint**, a tibble of
+positions whose metadata says which columns are identity, time and position, and in what units.
+It is one of the **aniframe** classes. `library(animovement)` attaches the seven working
+packages; the metapackage itself exports only `animovement_*()` helpers.
 
-For contributing to these packages rather than using them — releases, `NEWS.md`,
-licensing, CI, commit conventions — use the **animovement-dev** skill instead.
+Working *on* the packages (CI, releases, `NEWS.md`, commits) is the **animovement-dev** skill.
 
-## The packages (where things live)
+## Rules
 
-Eight packages. `anipoint`, `anisegment`, `anijoint`, `anievent` and `anistructure` are
-**classes defined in anicore**, not packages.
+1. **Find out which API is installed.** The 2026-08-28 releases predate a large rename, and
+   R-universe and the conda channel build `main`, so a new install gets development versions
+   (`0.8.0.9xxx`); animovement.dev documents those. Check `packageVersion("anicore")` or
+   `animovement::animovement_sitrep()`, or read `renv.lock`, `pixi.lock` or the error.
+   anicore 0.8.0 or older (aniprocess or animetric 0.5.0 or older) has the old names:
+   `reference/versions.md` maps them. Can't tell? Write for the development API and say so.
+2. **Verify every name before writing it.** The suite was split out of one package in 2025 and
+   largely renamed in 2026, so remembered names are often wrong or in another package. Look it
+   up (*Verifying*). If you can't fetch the docs or run R, say which names you couldn't check
+   and give the user the check, e.g. `args(aniprocess::mask_na_across)`.
+3. **Call through the owning package, or attach the suite.** `animovement::read_dataset()`
+   fails ("not an exported object"): use `library(animovement)` and bare names, or
+   `aniread::read_dataset()`. `library(animovement)` doesn't attach dplyr or ggplot2.
+4. **Put real units on the data before measuring.** Video trackers give pixels and frames, most
+   with no frame rate, and animetric measures per unit of the index in the frame's spatial
+   unit: speeds come out in px/frame unless converted. `set_metadata()` only *declares*
+   (`unit_space = "mm"` relabels pixels); `convert_unit_time()` and `convert_unit_space()`
+   rescale. Ask for the frame rate and the scale; never guess them.
+5. **Mask, then fill, then smooth, and keep every row.** `mask_na_across()` turns untrusted
+   points into `NA`, `replace_na_across()` fills gaps of up to `max_gap` rows (its default fills
+   every gap), `filter_across()` smooths. `filter_*()` here is signal filtering. Never drop
+   low-confidence rows with `dplyr::filter()`: the gaps vanish, can't be filled or seen, and
+   speeds jump across them.
+6. **Keep one trajectory per group.** A frame stays grouped by identity (`individual`,
+   `keypoint`, …) and context (`trial`, `session`), and everything is computed per group;
+   speed, distance and path measures refuse groups that pool trajectories. For one row per
+   animal, pick a keypoint or derive one (`add_point(across = "keypoint")`), then summarise.
+   Never `group_by(individual)` first.
+7. **Go through anicore's accessors** (`get_metadata()`, `get_axes()`, `get_index()`,
+   `get_keys()`): never `attr(x, "metadata")`, never assume columns named `x`, `y`, `time`.
+8. **Treat directions as circular**: `circ_mean()`, `circ_median()` or `summarise_aniframe()`,
+   never `mean()`. `course` is where the animal travels; `heading` is where the body faces,
+   and exists only once declared (`add_orientation()`). Angles come in the frame's
+   `unit_angle`, written in `(-pi, pi]`.
+9. **Say which tuning values you chose.** Thresholds, `max_gap`, window widths and `min_step`
+   have defaults, none safe for unseen data. Take them from the user or the check plots, and
+   state what you assumed.
+10. **Install from R-universe, not CRAN**: `repos = c("https://animovement.r-universe.dev",
+    "https://cloud.r-project.org")`; update with `animovement_update()`. Pixi:
+    `r-animovement` from `https://prefix.dev/animovement`.
 
-| Package | Owns | Verb prefixes |
+## The packages
+
+| Package | Owns | Look for |
 |---|---|---|
-| **animovement** | The metapackage. `library(animovement)` attaches the seven below and resolves versions; it owns no analysis functions | `animovement_` (install, update, conflicts, sitrep) |
-| **anicore** | The frame classes, metadata, units, axes, orientation, structures, grouping, and **every angle utility** | `as_` `is_` `ensure_` `get_` `set_` `add_` `remove_` `convert_` `reflect_` `validate_` `example_` `list_` `to_` `circ_` `angle_`, constructors `anipoint()` `anievent()` `anistructure()` |
-| **aniread** | Reading tracker output into an anipoint (BORIS into an anievent), skeletons into an anistructure, writing frames back; `read_dataset()` detects the source and is the entry point | `read_` `write_` `detect_` `get_` `calibrate_` `validate_` |
-| **aniprocess** | Signal processing: NA masking, gap filling, smoothing/filtering, peaks | `mask_na_` `replace_na_` `filter_` `find_` |
-| **animetric** | Metrics: kinematics, tortuosity, nearest-neighbour, derived points, orientation from points, summaries | `add_` `compute_` `summarise_`/`summarize_`, plus `differentiate()` |
-| **anivis** | Plot methods, themes, palettes, colour scales, figure layout | `plot_` `theme_` `scale_` `geom_` `palette_`, plus `as_plot_data()` `*_colors()` `plots()` |
-| **anicheck** | Data-quality diagnostics on an anipoint: confidence, missing data, segment lengths (return check objects) | `check_` |
-| **anispace** | Coordinate-system maps, rigid transforms, egocentric frames, quaternions | `map_to_` `transform_` `rotate_` `translate_` `quat_` `cartesian_to_` `polar_to_` `spherical_to_` |
+| **aniread** | Reading tracker output (BORIS gives an anievent), skeletons, writing | `read_dataset()`, `read_<tool>()`, `read_structure()`, `write_dataset()` |
+| **anicore** | The classes, metadata, units, column roles, structures, all angle utilities | `get_`/`set_metadata()`, `convert_unit_*()`, `get_`/`set_variables()`, `circ_*()` |
+| **anicheck** | Quality reports: check objects, not frames; `plot()` them | `check_confidence()`, `check_na_gapsize()`, `check_na_timing()` |
+| **aniprocess** | Masking to `NA`, gap filling, smoothing, peaks | `mask_na_*()`, `replace_na_*()`, `filter_*()`, `find_peaks()` |
+| **animetric** | Kinematics, path shape, neighbours, derived points, orientation, summaries | `add_*()` (frame plus columns), `compute_*()` (primitives), `summarise_*()` |
+| **anispace** | Coordinate systems, rigid and egocentric transforms, quaternions | `map_to_*()`, `rotate_coords()`, `transform_to_egocentric()`, `quat_*()` |
+| **anivis** | Plots, themes, palettes | `plot()`, `plot_trajectory()`, `plot_timeseries()`, `plot_circular()` |
+| **animovement** | The metapackage: attaches the seven, manages versions | `animovement_sitrep()`, `animovement_update()` |
 
-**A prefix narrows the search; it does not settle it.** `add_`, `get_`, `is_`, `as_` and
-`validate_` each occur in more than one package — `add_variables()` (anicore) and
-`add_point()` (animetric), `get_metadata()` (anicore) and `get_sample_data()` (aniread),
-`as_anipoint()` (anicore) and `as_plot_data()` (anivis). Look the name up.
+`anipoint`, `anisegment`, `anijoint`, `anievent` and `anistructure` are anicore classes, not
+packages; the `animovement/anievent` repository (formerly `anisegment`) is an empty placeholder
+for planned behaviour segmentation, with nothing to install. A prefix narrows the search but
+doesn't settle it: `add_variables()` is anicore's, `add_point()` animetric's. Both spellings
+are exported for much of the suite (`summarise_`/`summarize_`), not everywhere. Key exports:
+`reference/packages.md`.
 
-See `reference/packages.md` for the key exported functions per package.
-
-## A typical pipeline
+## The pipeline
 
 ```r
-library(animovement)                          # attaches the seven packages
+library(animovement)
 
-af <- read_dataset(path)                      # aniread    — detects the source; an anipoint
-af <- set_metadata(af, sampling_rate = fps)   # anicore    — if the reader recorded none
+af <- read_dataset("data/mouse1DLC_resnet50.csv") |>  # aniread: detects the tool
+  set_metadata(sampling_rate = 30) |>                 # anicore: declare the frame rate,
+  convert_unit_time("s") |>                           #   then frames -> seconds
+  convert_unit_space("mm", calibration_factor = 0.4)  #   px -> mm, in mm per px
 
-plot(check_confidence(af))                    # anicheck   — a side branch: returns a check object, not a frame
+plot(check_confidence(af))                            # anicheck: choose the threshold here
 
-af <- af |>
-  mask_na_across("confidence") |>             # aniprocess — mask low-confidence points to NA
-  replace_na_across("linear") |>              # aniprocess — fill the gaps
-  filter_across("sgolay") |>                  # aniprocess — smooth; sampling_rate is read from metadata
-  add_kinematics()                            # animetric  — speed, acceleration, course, …
+clean <- af |>
+  mask_na_across("confidence", threshold = 0.9) |>    # aniprocess: bad points -> NA
+  replace_na_across("linear", max_gap = 5) |>         #   fill gaps of up to 5 rows
+  filter_across("sgolay", window_width = 11, order = 3)  # smooth; needs sampling_rate
 
-summarise_path(af)                            # animetric  — one row per trajectory
-plot_trajectory(af)                           # anivis
+kin <- add_kinematics(clean)                          # animetric: speed, course, ... columns
+summarise_aniframe(kin)                               #   median_speed, ... per group
+summarise_path(clean)                                 #   total_distance, straightness, ...
+plot(clean)                                           # anivis: trajectories
+plot_timeseries(kin, variable = "speed")
 ```
 
-That arc — read → check → clean → transform → measure → plot — is the shape of nearly every
-task here. **The tuning arguments are omitted deliberately**: thresholds, gap lengths and
-window widths have defaults, but none is a safe choice for unseen data, so look each one up
-rather than copying this as working code. The `*_across()` verbs are marked experimental.
+Every number is a placeholder (rule 9). `summarise_aniframe()` describes the distribution of
+per-row measures; `summarise_path()` the geometry of each whole trajectory, one per group. The
+`*_across()` verbs read the position columns, index, `sampling_rate` and `confidence` from the
+frame; `mask_na_confidence()`, `filter_sgolay()` and the like take vectors, inside `mutate()`.
+Choosing each value, and recipes for several recordings, one row per animal, orientation and
+saving: `reference/workflows.md`.
 
-**aniprocess has two tiers.** `mask_na_across()`, `replace_na_across()` and
-`filter_across()` take a whole frame, work on its declared position columns within its
-grouping, and fill in what the frame knows (index, `sampling_rate`, `confidence`). The
-specific functions — `mask_na_confidence()`, `replace_na_linear()`, `filter_sgolay()`, … —
-and the `*_with()` dispatchers take a vector or a `pick()`ed data frame, for use inside
-`mutate()`; they are not frame-level verbs.
+## Reading a file
 
-## Naming traps
+`read_dataset(path)` detects the tool and passes other arguments to its reader. If detection
+fails, name `source =` from `get_supported_sources()` (`"idtrackerai"`, not `"idtracker"`).
 
-- **`filter_*` means signal filtering, not row subsetting.** `filter_across()` smooths and
-  `mask_na_across()` masks bad points to NA; neither drops rows. `dplyr::filter()` also works
-  on an aniframe and *does* subset rows. Read which one is meant. The masking functions were
-  called `filter_na_*()` until aniprocess 0.5.0; the old names still work, with a deprecation
-  warning, until the release after.
-- **Every angle utility is in anicore**: `wrap_angle()`, `unwrap_angle()`, `deg_to_rad()`,
-  `rad_to_deg()`, `angle_to_rad()` / `angle_from_rad()` (values ↔ a frame's `unit_angle`),
-  `angle_between()`, and the circular statistics `circ_mean()`, `circ_median()`, `circ_sd()`,
-  `circ_mad()`, `circ_difference()`, `circ_successive_difference()`. Of the angle maths,
-  anispace keeps only quaternions (`quat_*()`). Gone: animetric's `mean_angle()` /
-  `median_angle()` (use `circ_mean()` / `circ_median()` — the median gives **different
-  numbers**, since the old one was not rotation-equivariant) and anispace's
-  `calculate_angular_difference()` / `diff_angle()` (now `circ_difference()` /
-  `circ_successive_difference()`).
-- **Course is not heading.** animetric's velocity-derived angles describe the *path*: `course`
-  (direction of travel), `course_unwrapped`, `turning_rate`, `turning_speed`,
-  `turning_acceleration`, `cumulative_turning`; the summaries are `*_course`, `*_turning_*` and
-  `total_turning`. `heading` and angular velocity are reserved for the *body* — where the animal
-  faces, declared as orientation. The old names (`heading`, `angular_velocity`, …) were renamed
-  in animetric's development version; which measures exist for which dimensionality is in the
-  `add_kinematics()` reference page. In 3D, `course`, `course_elevation` and the signed
-  `turning_rate` need `add_kinematics(vertical = "z")` (or whichever axis points up in the
-  world): `axis_directions` are relative to the camera and cannot say which way gravity is.
-  A step shorter than `min_step` (`"auto"`: from the tracking noise of each trajectory) has no
-  `course` and adds no turning; `min_step = 0` counts every step.
-- **Two kinds of summary.** `summarise_aniframe()` gives the *distribution* of per-row measures
-  (median speed, circular mean course, `median_straightness_11` from windowed straightness), one
-  row per group at any grouping; it is an S3 generic with methods for anipoints, anisegments
-  (`length`) and anijoints (`angle`, circular). `summarise_path()` gives whole-trajectory
-  geometry (`total_distance`, `net_displacement`, whole-path `straightness`, `sinuosity`,
-  `e_max`, `total_turning`) and needs one trajectory per group. Neither needs `add_kinematics()`
-  run first.
-- **animetric's prefixes say what comes back.** `add_*()` returns the frame with something
-  added: columns (`add_kinematics()`, `add_tortuosity()`, `add_nnd()`), a derived member (`add_point()`) or
-  a declared orientation (`add_orientation()`). `compute_*()` are lower-level primitives: most
-  take vectors (`compute_nnd()`, `compute_straightness()`, `compute_gradient()`);
-  `compute_point()` returns a frame holding only the derived point. `summarise_*()` returns one
-  row per group. No `calculate_` function is left.
-- **Renamed in animetric's development version.** Agents that learned the old names will reach
-  for them; they still run, with a deprecation warning and their old output, until the next
-  release:
-  - `calculate_kinematics()` is now `add_kinematics()`, whose `path_length` is
-    `cumulative_distance`.
-  - `calculate_tortuosity()` is now `add_tortuosity()`, which adds only `straightness_<w>`,
-    `sinuosity_<w>` and `e_max_<w>`, named by the window width (`straightness_11` by default),
-    and no longer the kinematic columns.
-  - `summarise_kinematics()` is now `summarise_aniframe()`, and `summarise_tortuosity()` is
-    `summarise_path()`, where `total_path_length` and `emax` are `total_distance` and `e_max`.
-  - `add_centroid()` / `compute_centroid()` are now `add_point()` / `compute_point()`
-    (`method = "centroid"` by default).
-  - `calculate_nnd()` is now `add_nnd()`. Its columns carry the neighbour rank:
-    `nnd_<n>_<across>`, `nnd_<n>_<variable>` and `nnd_<n>_distance` (e.g. `nnd_1_individual`),
-    so calls with different `n` can sit side by side; split them with `^nnd_(\d+)_(.+)$`.
-  - `is_aniframe_kin()` is deprecated and the `aniframe_kin` class retired: check for the
-    columns you need instead of a class.
-- **Say which identity level you mean.** `add_nnd()` always needs `across`;
-  `add_point()` / `compute_point()` need `across` once the frame declares more than one
-  identity variable; anispace's `translate_coords()`, `rotate_coords()` and
-  `transform_to_egocentric()` then need `level`, naming the variable their reference point
-  belongs to, and take `to` / `align` / `about` / `by` (formerly `to_keypoint`,
-  `alignment_points`, `to_x` …).
-- **Both British and American spellings** are exported for much of the suite
-  (`summarise`/`summarize`, `colour`/`color`) — but not universally, so check rather than assume.
-- **An aniframe stays grouped by identity and temporal context.** Operations run
-  within-track by design; if a result looks per-individual when you expected it pooled, that
-  is why. Regrouping warns, and operations that derive from successive rows (speed, path
-  length) refuse a grouping that pools several trajectories.
-- **The identity order is not a hierarchy.** The `what` keys are not ordered coarse to fine,
-  identity variables need not nest, and there is no "finest" level to infer. Where a function
-  collapses one, it asks which.
+- DeepLabCut, SLEAP and Lightning Pose give `time` in frames from 0, positions in `px`, and no
+  frame rate; other tools vary. Readers of video-based tools flip y to point up, so plots match
+  the video: pass `video_height` for an exact flip, and never flip again.
+- DeepLabCut CSV or `.h5` (a CSV is detected as `"deeplabcut/lightningpose"`); its skeleton is
+  in `config.yaml`: `read_structure()`, then `set_structure()`. SLEAP: the analysis `.h5` or
+  CSV, not the `.slp`; the `.h5` brings its skeleton.
+- `.h5` needs rhdf5 from Bioconductor: `animovement_install_suggested()`, not
+  `install.packages("rhdf5")`.
+- Anything else: `read_custom()`, or `as_anipoint()` on a data frame.
 
-## Changes that alter results without an error
+Tool by tool, what each reader records and what to add: `reference/readers.md`.
 
-Worth knowing when re-running an older analysis on current packages; `NEWS.md` has the rest.
+## When something goes wrong
 
-- `filter_rollmean()` / `filter_rollmedian()` centre their window by default (they were
-  right-aligned, which lagged the signal). The ends are now `NA`; `align = "right"` restores
-  the old behaviour.
-- `read_sleap()` names individuals by the track names an h5 file records, not
-  `individual1`, `individual2`, ….
-- animetric's angular measures come back in the frame's `unit_angle`; a frame declared in
-  degrees used to get radians.
-- `median_course` (formerly `median_heading`) is computed with `circ_median()`; the old value
-  could be 180 degrees off when tied directions straddled zero.
-- `add_kinematics()` (and the deprecated `calculate_kinematics()`) return a plain anipoint: the
-  `aniframe_kin` class is gone, so code testing `inherits(x, "aniframe_kin")` now gets `FALSE`.
-- Directions are signed, in `(-pi, pi]`: `wrap_angle()` defaults to `modulo = "pi"`, and
-  `circ_mean()` / `circ_median()`, and so summaries such as `median_course`, return that range
-  where they gave `[0, 2*pi)`. anispace's `map_to_polar()`, `map_to_cylindrical()` and
-  `map_to_spherical()` write `phi` in that range too. `wrap_angle(x, "2pi")` gives the old range.
-- `add_kinematics()` and `summarise_path()` drop the direction of steps shorter than `min_step`
-  (`"auto"` by default), so `course` has more `NA` and `total_turning` is lower than
-  `calculate_kinematics()` gave; `min_step = 0` restores it.
-- `summarise_path()`'s and `add_tortuosity()`'s `sinuosity` and `e_max` come from the path
-  rediscretised to a constant step length, so they differ from the deprecated functions'.
-- Subsetting a frame so that it loses a key, index or interval column (`select()`, `[`,
-  `distinct()`) returns a plain tibble, not a frame with metadata naming missing columns.
-- anispace's `rotate_coords()` and `transform_to_egocentric()` turn a declared orientation with
-  the positions; it used to be left stale.
+- **`could not find function`**: attached (dplyr separately)? renamed (`reference/versions.md`)?
+  real (*Verifying*)? **`not an exported object from 'namespace:animovement'`**: rule 3.
+- **Deprecation warning, or `object 'heading' not found`**: the script predates the rename;
+  `reference/versions.md`.
+- **"Cannot determine the sampling rate"**: `set_metadata(sampling_rate = )`; the
+  Savitzky-Golay, Butterworth, Kalman and one-euro filters need it.
+- **Implausible speeds or distances**: `get_metadata(x, c("unit_time", "unit_space",
+  "sampling_rate"))`, then rule 4. **"This needs one trajectory per group"**: rule 6.
+- **A dplyr verb returned a plain tibble**: it dropped a key or the index (`select(x, y)`), or
+  rows were combined (`bind_rows()`). Keep those columns, or re-cast with `as_anipoint()` and
+  declare the metadata again, which re-casting resets.
+- **`there is no package called`**: rule 10; `rhdf5` and `arrow` via
+  `animovement_install_suggested()`.
 
-## The aniframe data model
+## Verifying
 
-**aniframe** is the parent class of the frames: **anipoint** (positions, what readers return),
-**anisegment** (length + direction per segment), **anijoint** (an angle per joint) and
-**anievent** (bouts). `is_aniframe()` is TRUE for all of them; test `is_anipoint()` when
-coordinates are needed. Each frame's metadata declares column roles as slots:
+- `https://animovement.dev/<package>/llms.txt` lists every export, grouped, each with a
+  one-line description and a link to its page: whether a function exists, and who owns it.
+- `https://animovement.dev/<package>/reference/<topic>.md` has the signature and arguments.
+  Follow the link from `llms.txt`: the topic isn't always the name (`set_variables()` is on
+  `variables.md`).
+- **A page that loads doesn't prove the function exists**: removed functions keep their pages
+  (`set_unit_space.md`, `mean_angle.md`). `llms.txt` or `NAMESPACE` settles it.
+- The site documents `main`. For another install, the installed help wins (`?fn`, `args()`),
+  and `NEWS.md` records every rename.
 
-- **`what$keys`**: identity, recognised `model`, `individual`, `subject`, `track`, `keypoint`. At least one, in any order.
-- **`when$index`**: the single column the frame is indexed by, `time` by default. Never a grouping variable.
-- **`when$keys`**: temporal *context*, recognised `observation`, `session`, `trial`.
-- **`where$position`**: maps each axis role (`x`, `y`, `z`, `rho`, `phi`, `theta`) to the
-  column carrying it. The role set is closed; the column names are free.
-- **`where$orientation`** (optional): which way the entity faces — `yaw` in 2D, or a unit
-  quaternion `qw`, `qx`, `qy`, `qz` in 3D. Declared, never detected from column names.
-- Plus an optional `confidence` column.
+This skill is a map, deliberately incomplete; where it disagrees with `llms.txt` or the
+installed package, they are right.
 
-Roles are detected from the recognised names, or set with
-`as_anipoint(variables_what=, variables_when=, variables_where=)`, and adjusted with
-`get_`/`set_`/`add_`/`remove_variables()`. A frame is **grouped by `get_keys()`**
-(`what$keys` + `when$keys`), and the dplyr methods **preserve the class + metadata**, renames
-included, unless a subset drops a key or the index: that gives a plain tibble.
+## Reference
 
-Metadata is read and declared through `get_metadata()` / `set_metadata()`, with flat field
-names; never read `attr(x, "metadata")`. **`set_*` only declares.** Changing values uses
-`convert_unit_*()` and `reflect_axis()`. Metadata also records **which way the axes point**
-(`axis_directions`, `axis_extents`, `handedness`), which is what tells a scene filmed from
-above from the same scene filmed through a glass floor. Named **structures** (skeletons,
-teams) relate the levels of a variable. Full detail in `reference/aniframe-model.md`.
-
-## Conventions
-
-- **Coordinates are found by role, not by name.** The coordinate system follows from the
-  declared axis roles (`get_axes()`, `get_coordinate_system()`, `is_cartesian_2d()`, …), and
-  functions read the axes and the index from the frame, so columns may be called anything.
-  Do not branch on whether a column is called `z`.
-- **Units of angles.** Angles a function derives come back in the frame's `unit_angle`:
-  animetric's kinematics and summaries, `as_anijoint()`, anispace's `map_to_*()`. The
-  primitives work in radians: `angle_between()`, the `circ_*()` family, `wrap_angle()`, and
-  anispace's component converters (`cartesian_to_phi()`, `polar_to_x()`, …). Code that
-  computes angles from a frame reads them with `angle_to_rad()` and writes them back with
-  `angle_from_rad()`; `convert_unit_angle()` converts the frame and its metadata, declared
-  orientation included.
-- **Sign of angles.** Directions are written in `(-pi, pi]`, the range `atan2()` gives, and
-  signed angles run from `x` toward `y`. `get_angle_direction()` says whether that is
-  clockwise or counter-clockwise as viewed. aniread's image-plane readers reflect `y` to point
-  up, so their angles run counter-clockwise. To change convention, change
-  the coordinates with `reflect_axis()`; the angles follow.
-- **Plot methods dispatch on the object**: `plot(anipoint)` → trajectory, `plot(anievent)` →
-  events; `plot_circular()` draws an angle column (`course`, a declared `heading`) as a rose
-  diagram. Check objects get `plot()`, `summary()` and `print()` methods from anicheck; its
-  `plot()` hands off to anivis, and prompts to install it if missing. The checks accept an
-  anipoint only.
-- **Skeletons are mostly read separately**: `aniread::read_structure()` (or `_deeplabcut()` /
-  `_sleap()`) gives an anistructure, attached with `anicore::set_structure()`. A frame reader
-  attaches one only when the data file carries it, which today means a SLEAP analysis `.h5`:
-  `read_sleap()` attaches it as the `keypoint` structure. DeepLabCut keeps its skeleton in the
-  project's `config.yaml`, so its frames still need `read_structure()`. `read_boris()` returns
-  an anievent, not an anipoint.
-- **Persisting**: `write_aniframe()` to parquet keeps the metadata; CSV and TSV lose it.
-  `read_aniframe()` reads parquet only, and restores an anipoint or an anievent — not an
-  anisegment or anijoint.
-- **Installing**: the packages are on R-universe, not CRAN:
-  `install.packages("animovement", repos = c("https://animovement.r-universe.dev", "https://cloud.r-project.org"))`.
-
-## Verifying against source
-
-The API evolves — **do not rely on remembered signatures**. Every package publishes its
-documentation as markdown, generated from the source:
-
-- `https://animovement.dev/<package>/llms.txt` — every exported function, grouped, with a
-  one-line description and a link to its help page. Start here to find out whether a
-  function exists and which package owns it.
-- `https://animovement.dev/<package>/reference/<topic>.md` — the full help page, including
-  exact signatures and arguments. The topic is usually the function name, but not always:
-  `set_variables()` is on `variables.md`, `angle_from_rad()` on `angle_to_rad.md`, the
-  `quat_*()` functions on `quaternions.md`. Follow the link in `llms.txt` rather than
-  constructing the URL.
-
-**A reference page loading does not mean the function exists.** The site is deployed without
-deleting old pages, so pages for removed functions are still served (animetric's
-`mean_angle.md`, anispace's `diff_angle.md`). Existence is settled by `llms.txt` or the
-package's `NAMESPACE`.
-
-**The site can lag `main`.** On a development install, the installed package's `NAMESPACE`
-and the development section of its `NEWS.md` win. Renames and removals are recorded in
-`NEWS.md`, so read it when a name you expected is missing.
-
-`reference/packages.md` in this skill is a *map* — it is deliberately incomplete and can
-lag the packages. Where it disagrees with the generated docs or the installed package, they
-are right.
-If the source is checked out locally, that package's `R/`, `NAMESPACE` and `NEWS.md` are
-equally authoritative. Either way, confirm arguments and defaults before calling something.
+- `reference/packages.md`: key exports per package. Read when looking for the function that
+  does something.
+- `reference/readers.md`: per tool, what the reader returns and what to declare after. Read
+  when reading a file.
+- `reference/workflows.md`: choosing thresholds, gaps, smoothing and units; recipes. Read when
+  writing or reviewing an analysis.
+- `reference/aniframe-model.md`: roles, metadata, grouping, structures, other grains. Read when
+  declaring or repairing a frame, or using skeletons, segments, joints or events.
+- `reference/versions.md`: release versus development, old names to new, silent changes. Read
+  when a name is missing, a script uses old names, or results changed.
