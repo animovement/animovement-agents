@@ -1,190 +1,179 @@
 ---
 name: animovement-dev
 description: >-
-  Use when contributing to or maintaining the animovement R packages themselves —
-  cutting a release, writing NEWS.md entries, commit messages and pull request
-  titles, setting up or debugging CI, adding a new package to the suite, or
-  questions about licensing, README/badge conventions and how the packages are
-  distributed. For *using* the packages to analyse movement data, use the
-  animovement skill instead.
+  Use when working on the animovement R packages themselves (anicore, aniread,
+  aniprocess, animetric, anivis, anicheck, anispace, the animovement
+  metapackage): writing NEWS.md entries, commit messages, issues, pull request
+  titles or descriptions; adding, renaming or deprecating an exported function; a failing
+  R-CMD-check, pkgdown, test-coverage or format-suggest job, or a local check
+  that fails; bumping a development version or using another suite package's
+  new code; cutting a release; README badges, Codecov, R-universe or the conda
+  builds; licensing; adding a package to the suite. Not for analysing movement
+  data with the packages: that is the animovement skill.
 ---
 
 # animovement-dev
 
-Conventions for working **on** the animovement packages, as opposed to with them.
-The suite is eight repositories under [animovement](https://github.com/animovement),
-sharing one set of workflows, one documentation theme, and one release process.
+For working **on** the animovement packages. Eight repositories under
+[github.com/animovement](https://github.com/animovement) share one CI, one pkgdown theme and
+one release process, kept in [animovement/.github](https://github.com/animovement/.github).
+anicore is at the bottom: aniread, aniprocess and anispace import it, animetric also imports
+anispace, anivis suggests animetric and anicheck, anicheck suggests anivis, and the
+animovement metapackage imports all seven. `anievent`, `anisegment` and `anijoint` are
+classes in anicore; the `anievent` and `animodel` repositories are empty.
 
-## The canonical documents
+## Where the rules are written
 
-Most of what governs a contribution is written down, and is maintained in
-[animovement/.github](https://github.com/animovement/.github) rather than here.
-**Read the relevant one rather than relying on this file** — this skill covers what
-those files do not, and points at them for everything else.
+Read the relevant document before acting; this skill adds what they leave out. The first
+five are copies of animovement/.github made by its Sync agent docs workflow: never edit them
+here, and when a detail matters, check the source URL in their header, since a copy can lag.
 
-| For | Read | Canonical source |
-|---|---|---|
-| Setup, pull requests, code + documentation style | `reference/contributing.md` | [CONTRIBUTING.md](https://github.com/animovement/.github/blob/main/CONTRIBUTING.md) |
-| What is expected of AI-assisted contributions | `reference/ai-policy.md` | [AI.md](https://github.com/animovement/.github/blob/main/AI.md) |
-| Cutting a release, step by step | `reference/release-checklist.md` | [the Release checklist template](https://github.com/animovement/.github/blob/main/.github/ISSUE_TEMPLATE/release.md) |
-| Opening a pull request | `reference/pull-request-template.md` | [PULL_REQUEST_TEMPLATE.md](https://github.com/animovement/.github/blob/main/.github/PULL_REQUEST_TEMPLATE.md) |
-| Opening an issue | `reference/issue-templates.md` | [the issue forms](https://github.com/animovement/.github/tree/main/.github/ISSUE_TEMPLATE) |
-| Per-package API | — | `https://animovement.dev/<package>/llms.txt` |
-| Which package owns what | — | the **animovement** skill |
+| For | Read |
+|---|---|
+| Setup, PRs (stacked ones too), commit types, NEWS.md, development versions, lifecycle, code and documentation style, what CI runs | `reference/contributing.md` |
+| AI-assisted work | `reference/ai-policy.md` |
+| Cutting a release | `reference/release-checklist.md` |
+| A pull request body | `reference/pull-request-template.md` |
+| An issue body | `reference/issue-templates.md` |
+| Licensing, README, CI layout, Codecov, R-universe, conda, adding a package | `reference/packaging.md` |
+| A check failing, locally or on CI | `reference/checks.md` |
+| Issues, PRs and commits through `gh` or the API | `reference/github-api.md` |
+| A package's functions and signatures | `https://animovement.dev/<package>/llms.txt` |
 
-These `reference/` files are **generated copies**, vendored so they can be read without
-fetching a URL. Each carries the commit it came from in a header comment. They are synced by
-a workflow in `animovement/.github` and must never be edited here — a change belongs in the
-source, which then flows back. If a detail is load-bearing, or the header looks old, check
-the canonical source.
+## Rules
 
-## Invariants — cheap to get wrong, expensive to undo
+1. **Verify, don't recall.** Check a function against the package's `llms.txt`, its
+   `reference/<topic>.md` page, or the source on `origin/main`: the suite was split and
+   renamed (aniframe became anicore, `aniframe()` became `anipoint()`), so a plausible name
+   may be wrong. Read a file or log in full before describing it, not its first lines, and
+   confirm what a grep suggests by running the code.
+2. **Say which build you tested.** `library(pkg)` loads the installed build, usually
+   R-universe's, not your branch. Test with `devtools::load_all()`; install the branch
+   (`devtools::install()`) before rendering `README.qmd` or a vignette.
+3. **Switch renv's autoloader off, as CI does:** `RENV_CONFIG_AUTOLOADER_ENABLED=false` in
+   `~/.Renviron`. Otherwise each package's `.Rprofile` activates a project library chosen by
+   the directory R starts in, so a check, build or render started elsewhere uses another
+   library and fails like a dependency problem.
+4. **Never push to `main`;** open a pull request. Fill in every section of the template, say
+   that the work was AI-assisted, and leave the last checkbox (read and tested it yourself)
+   to the human.
+5. **Edit sources, not outputs:** roxygen comments, not `man/`; `README.qmd`, not
+   `README.md`; the shared workflow or canonical stub in animovement/.github, not a
+   package's `.github/workflows/`, which the next sync puts back.
+6. **Format with [air](https://posit-dev.github.io/air/)** (`air format .`), not styler;
+   `format-suggest` is a required check. The `/style` and `/document` PR comments work only
+   for organisation members and owners.
+7. **Outside anicore, touch metadata only through anicore's accessors** (`get_metadata()`,
+   `set_metadata()`, `get_variables()`, `get_keys()`, `get_index()`). The
+   `anicore-metadata-contract` job fails on `attr(x, "metadata")` and `$variables_*`.
+8. **The PR title is a Conventional Commit:** `fix(aniprocess): keep metadata through
+   filter_kalman()`, lower-case and imperative, usually the package as scope, no full stop.
+   Nothing checks it in the packages. A squash merge uses the title only for a PR with several
+   commits; a single-commit PR lands as that commit's message, so make its first line the
+   title. A breaking change takes `!` and a `BREAKING CHANGE:` footer in a commit message:
+   the PR description never reaches `main`.
+9. **NEWS.md is a changelog written by hand**, under `# <package> (development version)`, in
+   Keep a Changelog's sections: `Added`, `Changed`, `Deprecated`, `Removed`, `Fixed`,
+   `Security`. Not the tidyverse's (`## Bug fixes`), and no `## Breaking changes`: a breaking
+   change goes under `Changed` or `Removed`, saying what breaks and what to do. Give the
+   effect a user sees, not the reasoning; end with `(#123)` before the full stop, or
+   `(#123, @username)` crediting anyone who isn't a maintainer; no entry for a change nobody
+   can observe. Some development sections still have a `## Breaking changes` heading from
+   before this rule: don't add to it; point it out.
 
-- **Format with [air](https://posit-dev.github.io/air/), not styler.** Formatting is checked
-  on every pull request and blocks merging. `/style` as a pull request comment applies it —
-  but the comment commands only run for organisation members and owners, so an outside
-  contributor runs `air format .` themselves.
-- **Never push to `main`.** It is protected. Open a pull request; checks must pass.
-- **The pull request title must be a Conventional Commit** — merges squash by convention, so
-  the title becomes the commit on `main`. See *Commit messages* below. The package
-  repositories do not run the `pr-title` check (see `reference/packaging.md`), so no workflow
-  checks the title there; get it right before merging.
-- **`NEWS.md` is written by hand, for users**, in the
-  [tidyverse style](https://style.tidyverse.org/news.html) — not generated from commits, and
-  not a commit log. Every user-facing change gets a bullet under
-  `# <package> (development version)` — e.g. `# anicore (development version)`.
-- **`man/` is generated.** Edit the roxygen comments, never the `.Rd` files. `/document` as a
-  pull request comment regenerates them (members and owners only, like `/style`).
-- **Verify a function exists before referring to it.** This suite went through a package
-  split and keeps evolving; a plausible-sounding name may belong to a different package or
-  may never have existed. Check `llms.txt`, not recollection.
+## Adding an exported function
 
-## The development loop
+1. **Roxygen:** sentence-case title; defaults stated in `@param`; a `@return` naming what
+   changed; an example `R CMD check` can run, at the smallest shape that makes the point,
+   taking its aniframe from `anicore::example_anipoint()` (namespaced, since only the
+   documented package is attached; `example_aniframe()` is deprecated); `@export`. A new
+   design gets `` `r lifecycle::badge("experimental")` ``.
+2. **Check that the example prints:** `withVisible(f(x))$visible`. A function returning
+   invisibly where its siblings don't is usually an oversight to fix.
+3. **`devtools::document()`** (or `/document`) regenerates `man/` and `NAMESPACE`.
+4. **Add the topic to `reference:` in `_pkgdown.yml`**, in its section. pkgdown errors on any
+   topic missing there unless it is `@keywords internal`, and as the slowest job it often
+   fails after everything else has passed. Topics sharing an `@rdname` are listed once;
+   anicheck lists `check_*` with `starts_with("check_")`. `pkgdown::check_pkgdown()` checks
+   it in seconds, once `pak::pak("animovement/animovementtemplate")` has installed the theme.
+5. **Tests** in `tests/testthat/test-<name>.R`, reaching every new line (Codecov is
+   informational, but PRs land fully covered). Give each `expect_error()` a `class` or a
+   pattern, or it passes on an error from an earlier guard.
+6. **NEWS.md** bullet under `## Added`; PR title `feat(<package>): add <fn>()`.
+7. **Another package will call it?** Bump the development version in the same PR (below).
 
-```r
-devtools::load_all()        # the branch, not the installed build
-devtools::test()            # testthat, edition 3
-devtools::run_examples()    # examples are run in check; run them here first
-goodpractice::gp()          # before anything substantial lands
-```
+Renaming or removing one follows *Function lifecycle* in `reference/contributing.md`:
+deprecate with a forwarding alias for one release, then remove it as a breaking change.
 
-- **`library(pkg)` loads the *installed* package**, which is usually the published release
-  rather than the branch you are working on. Use `load_all()`, or install the branch first.
-  Anything that renders package output — `README.qmd`, vignettes — needs it installed, not
-  merely loaded. Say which of the two you tested against when reporting a result.
-- **Tests are [testthat](https://testthat.r-lib.org) edition 3.** A contribution that comes
-  with tests gets merged faster; a bug fix without a regression test will be asked for one.
-- **[goodpractice](https://docs.ropensci.org/goodpractice/)** is expected before a
-  substantial change, and appears on the release checklist. CONTRIBUTING.md gives a way to
-  mute the checks that are noisy for this suite rather than running the full set every time.
-- Setup — repositories, `pak::pak()`, and the note that renv is optional — is in
-  [CONTRIBUTING.md](https://github.com/animovement/.github/blob/main/CONTRIBUTING.md#setting-up).
+## A check fails: is it yours?
 
-## Opening issues and pull requests through the API
+Stop at the first step that explains it. Symptoms and commands: `reference/checks.md`.
 
-**Templates are a web-UI feature.** An issue or pull request created with `gh` or through
-the API gets none of their structure — which is exactly how the first issue and several
-pull requests in this organisation came to ignore them. Nothing warns you; the body is
-simply whatever you passed.
+1. **Read the failing step's log**, not the job's name: `gh run view <id> --log-failed`. A
+   red `test-coverage` is often not about coverage.
+2. **Infrastructure:** an action that would not download, a runner or network error, a
+   Codecov upload timing out. Re-run the failed jobs; change nothing.
+3. **A floor R-universe hasn't built yet:** installing dependencies fails. Re-run once
+   `https://animovement.r-universe.dev/api/packages/<package>` reports the version.
+4. **The job fails on `main` too:** not yours. Say so, and fix it in its own PR.
+5. **Yours.** R-CMD-check runs `--as-cran` and fails on any WARNING (NOTEs pass); pkgdown on
+   a topic missing from `_pkgdown.yml`; format-suggest on anything air would change.
 
-So reproduce the fields by hand:
+A local failure that CI doesn't show is usually the environment: Suggests not installed (CI
+installs them all; so does `pak::pak()` in the package root), renv's library (rule 3), or the
+installed build (rule 2). Compare with a clean checkout of `main` before calling anything a
+regression.
 
-- **Pull requests** — `reference/pull-request-template.md` is the template verbatim. Fill in
-  its sections rather than replacing them with prose of your own; that applies specifically
-  to AI-assisted contributions, and the AI policy says so.
-- **Issues** — `reference/issue-templates.md` renders the bug and feature *forms* as markdown
-  skeletons, since their YAML cannot be passed as a body. It also gives the value for
-  `gh issue create --type Bug|Feature|Task`, which has to be set explicitly.
+## Using another package's new code
 
-## Writing documentation
+1. **The PR adding the code bumps its package's development version** (`0.8.0.9008` to
+   `0.8.0.9009`), because a dependency can only name a version. Other PRs leave it alone.
+2. **The PR using it raises the floor** in `Imports`, `anicore (>= 0.8.0.9009)`, and the same
+   floor goes into `recipes/<package>/recipe.yaml` in
+   [animovement-forge](https://github.com/animovement/animovement-forge), under `host` and
+   `run`: the conda recipes list dependencies by hand.
+3. **Wait for R-universe.** CI installs suite packages from R-universe, not GitHub, so the
+   downstream checks can't resolve the floor until it has built the new version, typically
+   10 to 15 minutes after the merge. Then re-run them, rather than adding `Remotes:`.
 
-Roxygen documentation has its own style section in `reference/contributing.md`
-([Documentation style](https://github.com/animovement/.github/blob/main/CONTRIBUTING.md#documentation-style)).
-It is short, and the rules are not the usual ones — the house style is deliberately terse. Read it
-before writing `@param`, `@return` or `@examples`; it covers namespacing `example_aniframe()` in
-examples, naming what changed in `@return`, and when `\dontrun{}` is and is not acceptable.
-
-One habit it does not cover, because it is an assistant failure mode rather than a style
-preference:
-
-- **Do not pad.** No "This function…", no restating the function name in prose, no closing
-  summary repeating the description, no comments in examples narrating what the next line does.
-  **A one-sentence description is finished, not unfinished** — the instinct to keep going is the
-  thing to resist.
-
-## Commit messages
-
-[Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/):
-
-```
-<type>(<optional scope>): <description>
-```
-
-`feat` (minor bump) · `fix` (patch) · `docs` · `perf` · `refactor` · `test` · `build` ·
-`ci` · `chore` · `revert`. Scope is normally the package name. A breaking change takes a
-`!` before the colon plus a `BREAKING CHANGE:` footer, and forces a major bump.
-
-Imperative mood, lower case, no trailing full stop; describe the change rather than the
-file — `fix(aniprocess): keep metadata through filter_kalman()`, not `fix: update
-filter-kalman.R`. The full table with version effects is in
-[CONTRIBUTING.md](https://github.com/animovement/.github/blob/main/CONTRIBUTING.md#commit-messages).
-
-## Packaging, licensing, CI and distribution
-
-The things that are written down nowhere else — and that are hard to reverse if a new
-package gets them wrong — are in `reference/packaging.md`:
-
-- **Licensing** — why the metapackage is GPL-3 while the seven analysis packages are MIT,
-  and how adapted code is credited.
-- **README** — the shared skeleton, the badge set, and the Quarto setting that silently
-  breaks every badge without it.
-- **CI** — seven reusable workflows in `animovement/.github`, six of them called by
-  trigger-only stubs in each package; the required checks; the metadata-contract job; Codecov.
-- **Distribution** — R-universe rather than CRAN, why `Additional_repositories` exists, the
-  conda builds on prefix.dev, and the R version that WASM builds are pinned to.
-- **Adding a package** — the checklist of places a new package has to be registered.
+A first dependency on a suite package also needs
+`Additional_repositories: https://animovement.r-universe.dev` in `DESCRIPTION`. Merged changes
+reach the conda channel only with a version bump; a maintainer catches up with
+`chore(<package>): bump development version to <version>`.
 
 ## Releases
 
-Open a **Release checklist** issue from the template and work through it — `reference/release-checklist.md`
-is the same content, for reading rather than ticking off. The thing worth knowing in advance is that the version appears
-in five places that go stale independently: `DESCRIPTION`, `CITATION.cff`, `inst/CITATION`,
-the `NEWS.md` heading, and the rendered `README.md` (the version is embedded in the startup
-banner and the citation block, so it must be re-rendered). After the release, `DESCRIPTION`
-goes to `<next>.9000` and `NEWS.md` opens a fresh `# <package> (development version)`.
+Open a **Release checklist** issue and work through it: `reference/release-checklist.md` (from
+`gh`, see `reference/github-api.md`). What it doesn't say:
 
-## Development versions across packages
+- **Release in dependency order:** anicore; then aniread, aniprocess, anispace; animetric;
+  anivis; anicheck; the metapackage last. A release depends only on releases: its PR replaces
+  each `.9xxx` floor on a suite package with that package's new release (aniread#111 took
+  `anicore (>= 0.6.0)` to `(>= 0.8.0)`), so upstream goes out first.
+- **The version number is the maintainer's call.** Every package is below 1.0.0, where
+  breaking changes have bumped the minor (anicore 0.7.0 to 0.8.0; its deprecations name 0.9.0).
+- **It lives in `DESCRIPTION`, `CITATION.cff`** (`version`, `date-released`) **and the
+  NEWS.md heading**, `# <package> <version> (YYYY-MM-DD)`. `inst/CITATION` reads
+  `meta$Version`. Only animovement's README embeds versions, those of every suite package, so
+  it is re-rendered after any release.
+- **PR titles:** `chore(<package>): release <version>` from `release/<version>`, then
+  `chore(<package>): begin the <version>.9000 development cycle`.
+- **Name the GitHub release `v<version> — <subtitle>`:** the Zulip announcement shows the
+  subtitle. To announce again, run *Post Release Notes on Zulip* by hand with the tag; never
+  re-publish a release, which mints a duplicate Zenodo DOI.
 
-The packages depend on each other's **development** versions, installed from R-universe, so
-code another package needs is usable only once it is there under a new version number.
+## Through `gh` or the API
 
-- **anicore bumps in the feature pull request** when downstream will require the new code:
-  animovement/anicore#163 took it to `0.8.0.9003`, #171 to `0.8.0.9004`.
-- **The other packages bump in a pull request of their own**, touching only `DESCRIPTION`:
-  `chore(<pkg>): bump development version to <x>` (animovement/animetric#75,
-  animovement/anispace#46). The conda builds depend on it too: the animovement-forge
-  nightly publishes a package only when R-universe shows a new version (see
-  `reference/packaging.md`), so commits merged without a bump do not reach prefix.dev until
-  the next one.
-- **Downstream raises its dependency floor** in the pull request that starts using the new
-  code — `anicore (>= 0.8.0.9004)` in `Imports`.
-- **Then wait for R-universe.** CI installs `ani*` dependencies from
-  `animovement.r-universe.dev`, so a downstream check fails to resolve the new floor until
-  R-universe has rebuilt the upstream package (about ten minutes after the merge, as
-  observed). Re-run the checks once
-  `https://animovement.r-universe.dev/api/packages/<pkg>` reports the version.
+Templates apply only in the web UI, and the contents API commits one file at a time. The
+commands are in `reference/github-api.md`:
 
-## Stacked pull requests
+- An issue or PR created with `gh` gets no template: write every section yourself, and set
+  `--type Bug|Feature|Task` on an issue.
+- A change to several files is one tree and one commit through the git data API, not one
+  contents-API call per file.
 
-A large change can land as a stack, each pull request based on the branch of the one below
-(the anicore restructure was animovement/anicore#156–#163). Each layer lands on `main` as its
-own squash commit.
+## Writing
 
-- **Squashing rewrites the lower layer.** Its commits reach `main` as one new commit, while
-  the upper branch still carries the originals. Replay only the upper layer's own commits:
-  `git rebase --onto origin/main <lower-branch> <upper-branch>`, then force-push.
-- **Retarget the upper pull request to `main`** if it still points at the merged branch.
-  GitHub retargets dependent pull requests only when the merged branch is deleted, and these
-  repositories do not delete branches on merge.
-- Every required check runs on a stacked pull request: those stubs trigger on all pull
-  requests, whatever their base.
+The house style is terse (*Documentation style* in `reference/contributing.md`): no "This
+function…", no restating the name, no closing summary, no comments narrating the next line. A
+one-sentence description is finished. A PR description says why; the diff already says what.
