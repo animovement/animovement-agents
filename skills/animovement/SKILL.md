@@ -81,8 +81,9 @@ Working *on* the packages (CI, releases, `NEWS.md`, commits) is the **animovemen
 | **animovement** | The metapackage: attaches the seven, manages versions | `animovement_sitrep()`, `animovement_update()` |
 
 `anipoint`, `anisegment`, `anijoint`, `anievent` and `anistructure` are anicore classes, not
-packages; the `animovement/anievent` repository (formerly `anisegment`) is an empty placeholder
-for planned behaviour segmentation, with nothing to install. A prefix narrows the search but
+packages. `anievent` is also the name of a planned package for behaviour and action
+segmentation and changepoint detection, not released yet: there's nothing to install, and
+the anievent class comes with anicore. A prefix narrows the search but
 doesn't settle it: `add_variables()` is anicore's, `add_point()` animetric's. Both spellings
 are exported for much of the suite (`summarise_`/`summarize_`), not everywhere. Key exports:
 `reference/packages.md`.
